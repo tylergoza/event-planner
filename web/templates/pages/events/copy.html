@@ -1,0 +1,25 @@
+{{define "content"}}
+<div class="card narrow">
+  <h2 class="section__title">Copy this event</h2>
+  <p class="muted small">Makes a new event in planning with the same rooms, task lists, tasks, schedule, needs and helper jobs. Dates move with the new start day; tasks start over as to do and needs as needed.</p>
+  {{template "errors" .Errors}}
+  <form method="post" action="/events/{{.E.ID}}/copy" class="form">
+    {{template "csrf" .CSRF}}
+    <div class="field">
+      <label for="title">New title</label>
+      <input id="title" name="title" value="{{.Form.title}}" required maxlength="200">
+    </div>
+    <div class="field">
+      <label for="starts_on">New start date</label>
+      <input id="starts_on" name="starts_on" type="date" value="{{.Form.starts_on}}" required autofocus>
+      <p class="hint">It started {{.E.StartsOn | fmtDate}}.</p>
+    </div>
+    <label class="check"><input type="checkbox" name="assignees" value="1" {{if .Form.assignees}}checked{{end}}> Keep who's on each task</label>
+    <label class="check"><input type="checkbox" name="helpers" value="1" {{if .Form.helpers}}checked{{end}}> Keep helpers signed up</label>
+    <div class="form__actions">
+      <button type="submit" class="btn btn--primary">Copy event</button>
+      <a class="btn btn--ghost" href="/events/{{.E.ID}}">Cancel</a>
+    </div>
+  </form>
+</div>
+{{end}}

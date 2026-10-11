@@ -1,0 +1,10 @@
+{{define "content"}}
+<div class="card narrow">
+  <h2 class="section__title">Edit schedule item</h2>
+  {{template "errors" .Errors}}
+  {{template "schedule-fields" .}}
+</div>
+<div class="card narrow">
+  {{template "delete-button" (dict "Action" (printf "/schedule/%d/delete" .Form.ID) "CSRF" .CSRF "Label" "Remove from schedule" "Confirm" "Remove this from the schedule?")}}
+</div>
+{{end}}

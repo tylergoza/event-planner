@@ -1,0 +1,20 @@
+{{define "content"}}
+<div class="card narrow">
+  <h2 class="section__title">Change the repeat pattern from {{fmtDate .E.OccurrenceDate}}</h2>
+  <p class="muted small">Now: {{.Current}}. The new pattern starts at {{fmtDate .E.OccurrenceDate}} and replaces this date and every later one with fresh copies of this date. Earlier dates stay as they are.</p>
+  {{template "errors" .Errors}}
+  {{if .Warn}}<div class="alert alert--error" role="alert"><strong>Some of the dates being replaced have work on them. It will be lost.</strong></div>{{end}}
+  <ul class="impact-list">
+    {{range .Impacts}}{{if .HasWork}}<li class="warn">{{fmtDate .OccurrenceDate}}: {{impactText .}}, which will be lost</li>{{end}}{{end}}
+  </ul>
+  <p class="muted small">{{pluralize (len .Impacts) "date"}} will be replaced.</p>
+  <form method="post" action="/events/{{.E.ID}}/repeat" class="form">
+    {{template "csrf" .CSRF}}
+    {{template "repeat-fields" .Repeat}}
+    <div class="form__actions">
+      <button type="submit" class="btn btn--primary">Change the pattern</button>
+      <a class="btn btn--ghost" href="/events/{{.E.ID}}">Cancel</a>
+    </div>
+  </form>
+</div>
+{{end}}

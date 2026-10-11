@@ -1,0 +1,31 @@
+# systemd unit for running the binary directly (no Docker). Install:
+#   sudo useradd --system --home-dir /var/lib/event-planner --shell /usr/sbin/nologin events
+#   sudo install -m 755 event-planner-linux-amd64 /usr/local/bin/event-planner
+#   sudo cp event-planner.service /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now event-planner
+# Edit TZ below first. Run commands as the service user against the same
+# database, flags before the command:
+#   sudo -u events event-planner -db /var/lib/event-planner/events.db create-user alice --admin
+# Logs: journalctl -u event-planner -f
+[Unit]
+Description=Church Event Planner
+After=network.target
+
+[Service]
+User=events
+StateDirectory=event-planner
+Environment=ADDR=127.0.0.1:8110
+Environment=DB_PATH=/var/lib/event-planner/events.db
+Environment=TZ=America/Chicago
+# Caddy (deploy/Caddyfile) is in front; it's the only thing that can reach
+# 127.0.0.1:8110, so its X-Forwarded-* headers can be trusted.
+Environment=TRUST_PROXY=1
+ExecStart=/usr/local/bin/event-planner
+Restart=on-failure
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

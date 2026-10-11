@@ -1,0 +1,23 @@
+{{define "content"}}
+<div class="card narrow">
+  <h2 class="section__title">Edit helper on {{.Role.Name}}</h2>
+  {{template "errors" .Errors}}
+  <form method="post" action="/helpers/{{.Form.ID}}/edit" class="form">
+    {{template "csrf" .CSRF}}
+    <div class="field">
+      <label for="name">Name</label>
+      {{if .Form.UserID}}<input id="name" value="{{.Form.Name}}" readonly><p class="muted small">This is a user, so the name follows their account.</p>
+      {{else}}<input id="name" name="name" value="{{.Form.Name}}" required>{{end}}
+    </div>
+    <div class="field"><label for="phone">Phone <span class="optional">optional</span></label><input id="phone" name="phone" type="tel" value="{{.Form.Phone}}"></div>
+    <div class="field"><label for="notes">Notes <span class="optional">optional</span></label><textarea id="notes" name="notes" rows="3">{{.Form.Notes}}</textarea></div>
+    <div class="form__actions">
+      <button type="submit" class="btn btn--primary">Save</button>
+      <a class="btn btn--ghost" href="/events/{{.E.ID}}/helpers#role-{{.Role.ID}}">Cancel</a>
+    </div>
+  </form>
+</div>
+<div class="card narrow">
+  {{template "delete-button" (dict "Action" (printf "/helpers/%d/delete" .Form.ID) "CSRF" .CSRF "Label" "Remove" "Confirm" (printf "Take %s off %s?" .Form.Name .Role.Name))}}
+</div>
+{{end}}

@@ -1,0 +1,26 @@
+{{define "content"}}
+<div class="page-head">
+  <div><h1>Events</h1><p class="muted">Everything planned here, current and past.</p></div>
+  {{if .User.CanPlan}}<div class="page-head__actions"><a class="btn btn--primary" href="/events/new">New event</a></div>{{end}}
+</div>
+{{if .Events}}
+<div class="table-wrap">
+  <table class="table table--stack">
+    <thead><tr><th>Event</th><th>Status</th><th>When</th><th>Tasks</th><th>Needs</th></tr></thead>
+    <tbody>
+      {{range .Events}}
+        <tr>
+          <td data-label="Event"><div><a href="/events/{{.ID}}"><strong>{{.Title}}</strong></a>{{with .Kind}}<br><span class="muted small">{{.}}</span>{{end}}</div></td>
+          <td data-label="Status">{{template "event-badge" .Status}}{{if .Locked}} {{template "locked-badge"}}{{end}} {{template "visibility-badge" .Visibility}} {{template "repeat-badge" .SeriesID}}</td>
+          <td data-label="When"><div class="small">{{.When}}</div></td>
+          <td data-label="Tasks"><div class="small">{{.Tasks.Done}} / {{.Tasks.Total}}{{if .Overdue}} <span class="text-alert">· {{.Overdue}} overdue</span>{{end}}</div></td>
+          <td data-label="Needs"><div class="small">{{.Needs.Done}} / {{.Needs.Total}}</div></td>
+        </tr>
+      {{end}}
+    </tbody>
+  </table>
+</div>
+{{else}}
+  <div class="empty"><h2>No events yet</h2>{{if .User.CanPlan}}<p><a class="btn btn--primary" href="/events/new">New event</a></p>{{end}}</div>
+{{end}}
+{{end}}

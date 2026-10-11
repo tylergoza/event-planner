@@ -1,0 +1,80 @@
+{{define "content"}}
+<div class="page-head">
+  <div><h1>Dashboard</h1><p class="muted">Events in the works and what's on your plate.</p></div>
+  <div class="page-head__actions"><a class="btn" href="/calendar">Calendar</a> <a class="btn btn--primary" href="/events/new">New event</a></div>
+</div>
+
+{{if .Events}}
+  <div class="card-grid">
+    {{range .Events}}{{template "event-card" .}}{{end}}
+  </div>
+{{else}}
+  <div class="empty">
+    <h2>Nothing in the works</h2>
+    <p>Add an event to start planning its schedule, tasks and everything that is needed.</p>
+    <p><a class="btn btn--primary" href="/events/new">New event</a></p>
+  </div>
+{{end}}
+
+<section class="section">
+  <h2 class="section__title">My tasks</h2>
+  {{if .MyTasks}}
+  <div class="table-wrap">
+    <table class="table table--stack">
+      <thead><tr><th>Task</th><th>Event</th><th>Due</th><th>Status</th></tr></thead>
+      <tbody>
+        {{range .MyTasks}}
+          <tr class="task-row task-row--{{.Status}}">
+            <td data-label="Task"><a href="/events/{{.EventID}}/tasks#task-{{.ID}}"><strong>{{.Title}}</strong></a></td>
+            <td data-label="Event"><a href="/events/{{.EventID}}">{{.EventTitle}}</a></td>
+            <td data-label="Due">{{if .DueOn}}<span class="{{if .Overdue $.Today}}text-alert{{end}}">{{fmtDate .DueOn}}{{if .Overdue $.Today}} (overdue){{else}} <span class="muted small">({{relDays .DueOn}})</span>{{end}}</span>{{end}}</td>
+            <td data-label="Status">{{template "task-badge" .Status}}</td>
+          </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+  {{else}}
+    <p class="muted">Nothing assigned to you. Tasks given to you in any event show up here.</p>
+  {{end}}
+</section>
+
+<section class="section">
+  <h2 class="section__title">My helper jobs</h2>
+  {{if .MyJobs}}
+  <div class="table-wrap">
+    <table class="table table--stack">
+      <thead><tr><th>Job</th><th>Event</th><th>When</th></tr></thead>
+      <tbody>
+        {{range .MyJobs}}
+          <tr>
+            <td data-label="Job"><a href="/events/{{.EventID}}/helpers#role-{{.RoleID}}"><strong>{{.RoleName}}</strong></a></td>
+            <td data-label="Event"><a href="/events/{{.EventID}}">{{.EventTitle}}</a></td>
+            <td data-label="When">{{fmtDate .StartsOn}}{{with .WhenText}} <span class="muted small">· {{.}}</span>{{end}}</td>
+          </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+  {{else}}
+    <p class="muted">You're not signed up to help anywhere. Sign up from an event's Helpers tab.</p>
+  {{end}}
+</section>
+{{end}}
+
+{{/* One event's card. Pass a store.EventSummary. */}}
+{{define "event-card"}}
+  <a class="card card--link event-card" href="/events/{{.ID}}">
+    <div class="event-card__head">
+      <h2 class="card__title">{{.Title}}</h2>
+      {{template "event-badge" .Status}}{{if .Locked}} {{template "locked-badge"}}{{end}} {{template "repeat-badge" .SeriesID}}
+    </div>
+    {{with .Kind}}<p class="muted small">{{.}}</p>{{end}}
+    <p class="event-card__next"><strong>{{relDays .StartsOn}}</strong><br><span class="muted small">{{.When}}</span></p>
+    <dl class="event-card__stats">
+      <div><dt>Tasks done</dt><dd>{{.Tasks.Done}} of {{.Tasks.Total}}{{if .Overdue}} <span class="text-alert small">({{.Overdue}} overdue)</span>{{end}}</dd></div>
+      <div><dt>Needs gathered</dt><dd>{{.Needs.Done}} of {{.Needs.Total}}</dd></div>
+    </dl>
+    {{template "progress" .Tasks}}
+  </a>
+{{end}}

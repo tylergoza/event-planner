@@ -1,0 +1,57 @@
+{{define "content"}}
+<div class="page-head no-print">
+  <div><h1>{{.Heading}}</h1></div>
+  <div class="page-head__actions">
+    <a class="btn btn--sm" href="{{.PrevURL}}" rel="prev">&larr; Previous</a>
+    {{if not .IsToday}}<a class="btn btn--sm" href="{{.TodayURL}}">Today</a>{{end}}
+    <a class="btn btn--sm" href="{{.NextURL}}" rel="next">Next &rarr;</a>
+    <button type="button" class="btn btn--sm btn--ghost" data-controller="print" data-action="print#print">Print</button>
+  </div>
+</div>
+<h1 class="print-only">{{.Heading}}</h1>
+
+{{if .Rooms}}
+<form class="cal-filter no-print" method="get" action="/calendar">
+  <input type="hidden" name="month" value="{{.Month}}">
+  <label for="cal-room">Room</label>
+  <select id="cal-room" name="room">
+    <option value="">All rooms</option>
+    {{range .Rooms}}<option value="{{.}}" {{if eq . $.Room}}selected{{end}}>{{.}}</option>{{end}}
+  </select>
+  <button type="submit" class="btn btn--sm">Show</button>
+  {{if .Room}}<a class="btn btn--sm btn--ghost" href="/calendar?month={{.Month}}">Clear</a>{{end}}
+</form>
+{{end}}
+
+<div class="cal-grid" role="table" aria-label="{{.Heading}}">
+  <div class="cal-grid__head" role="row">
+    {{range .Weekdays}}<div role="columnheader">{{.}}</div>{{end}}
+  </div>
+  {{range .Grid}}
+    <div class="cal-grid__week" role="row">
+      {{range .}}
+        <div class="cal-cell{{if not .InMonth}} cal-cell--out{{end}}{{if .Today}} cal-cell--today{{end}}" role="cell">
+          <div class="cal-cell__day">{{.Day}}</div>
+          {{range .Items}}{{template "cal-item" (dict "Busy" .Busy "BusyText" .BusyText "EventID" .EventID "Title" .Title "Kind" .Kind "Rooms" .Rooms "When" .When "User" $.User)}}{{end}}
+        </div>
+      {{end}}
+    </div>
+  {{end}}
+</div>
+
+<div class="cal-agenda">
+  {{range .Agenda}}
+    <section class="cal-agenda__day{{if .Today}} cal-agenda__day--today{{end}}">
+      <h2>{{fmtDate .Date}}{{if .Today}} <span class="badge">Today</span>{{end}}</h2>
+      {{range .Items}}{{template "cal-item" (dict "Busy" .Busy "BusyText" .BusyText "EventID" .EventID "Title" .Title "Kind" .Kind "Rooms" .Rooms "When" .When "User" $.User)}}{{end}}
+    </section>
+  {{else}}
+    <p class="muted">Nothing on the calendar this month{{if .Room}} in that room{{end}}.</p>
+  {{end}}
+</div>
+
+<p class="cal-subscribe muted small no-print">
+  Subscribe: <a href="{{.WebcalURL}}">open in your calendar app</a> or copy
+  <a href="/calendar.ics">{{.Feed}}</a> into Google Calendar, Apple Calendar or Outlook, and new events show up on their own.
+</p>
+{{end}}

@@ -1,0 +1,22 @@
+{{define "content"}}
+<div class="no-print section__head" data-controller="print">
+  <a href="/events/{{.E.ID}}/tasks">Back to tasks</a>
+  <button type="button" class="btn btn--primary" data-action="print#print">Print</button>
+</div>
+<div class="print-sheet">
+  <h1 class="print-title">{{.E.Title}}: tasks</h1>
+  <p class="muted">{{.E.When}}</p>
+  {{range .Groups}}
+    {{if .Tasks}}
+    <h2 class="section__title">{{.Name}}</h2>
+    <ul class="checklist">
+      {{range .Tasks}}
+        <li><span class="checklist__box" aria-hidden="true">{{if .IsDone}}☑{{else}}☐{{end}}</span>
+          <span class="checklist__text"><strong>{{.Title}}</strong>
+            {{with .Assignee}} · {{.}}{{end}}{{with .DueOn}} · due {{fmtDate .}}{{end}}{{with .RoomName}} · {{.}}{{end}}</span></li>
+      {{end}}
+    </ul>
+    {{end}}
+  {{end}}
+</div>
+{{end}}

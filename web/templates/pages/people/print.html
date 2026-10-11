@@ -1,0 +1,11 @@
+{{define "content"}}
+<div class="no-print section__head" data-controller="print">
+  <a href="/events/{{.E.ID}}/people">Back to people</a>
+  <button type="button" class="btn btn--primary" data-action="print#print">Print</button>
+</div>
+<div class="print-sheet">
+  <h1 class="print-title">{{.E.Title}}: who's doing what</h1>
+  <p class="muted">{{.E.When}}</p>
+  {{template "people-body" .}}
+</div>
+{{end}}

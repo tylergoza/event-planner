@@ -1,0 +1,21 @@
+{{define "content"}}
+<div class="card narrow">
+  <h2 class="section__title">End the series from {{fmtDate .E.OccurrenceDate}}</h2>
+  <p>This date and every later one will be deleted, with their schedules, tasks, rooms, helpers and needs. Earlier dates aren't touched.</p>
+  {{if .Warn}}<div class="alert alert--error" role="alert"><strong>Some of these dates have work on them. It will be lost.</strong></div>{{end}}
+  <ul class="impact-list">
+    {{range .Impacts}}
+      <li>{{fmtDate .OccurrenceDate}}{{if ne .StartsOn .OccurrenceDate}} <span class="muted small">(moved to {{fmtDate .StartsOn}})</span>{{end}}
+        {{if .HasWork}}<span class="warn">: {{impactText .}}, which will be lost</span>{{end}}</li>
+    {{end}}
+  </ul>
+  <p class="muted small">{{pluralize (len .Impacts) "date"}} will be removed.</p>
+  <form method="post" action="/events/{{.E.ID}}/end-series" class="form">
+    {{template "csrf" .CSRF}}
+    <div class="form__actions">
+      <button type="submit" class="btn btn--danger">End the series</button>
+      <a class="btn btn--ghost" href="/events/{{.E.ID}}">Cancel</a>
+    </div>
+  </form>
+</div>
+{{end}}

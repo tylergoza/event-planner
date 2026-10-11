@@ -1,0 +1,32 @@
+{{define "content"}}
+<div class="card narrow">
+  <h2 class="section__title">Make later dates like {{fmtDate .E.OccurrenceDate}}</h2>
+  <p class="muted small">Replaces the chosen parts of every later date with this date's. Tasks start over as to do, needs as needed, and helper jobs without helpers.</p>
+  {{template "errors" .Errors}}
+  <form method="post" action="/events/{{.E.ID}}/match-later" class="form">
+    {{template "csrf" .CSRF}}
+    <fieldset class="fieldset">
+      <legend>Copy to the later dates</legend>
+      {{range .Sections}}<label class="check"><input type="checkbox" name="section" value="{{.Key}}" {{if .Checked}}checked{{end}}> {{.Label}}</label>{{end}}
+    </fieldset>
+    {{if .Previewed}}
+      {{if .Impacts}}
+      <div>
+        {{if .Warn}}<div class="alert alert--error" role="alert"><strong>Some dates have work on them. These would be replaced.</strong></div>{{end}}
+        <ul class="impact-list">
+          {{range .Impacts}}{{if .HasWork}}
+            <li class="warn">{{fmtDate .OccurrenceDate}}: {{impactText .}} — these would be replaced</li>
+          {{end}}{{end}}
+        </ul>
+        <p class="muted small">{{pluralize (len .Impacts) "later date"}} will change.</p>
+      </div>
+      {{else}}<p class="muted">There are no later dates to change.</p>{{end}}
+    {{end}}
+    <div class="form__actions">
+      <button type="submit" class="btn" formmethod="get">Preview</button>
+      <button type="submit" class="btn btn--primary">Make later dates like this</button>
+      <a class="btn btn--ghost" href="/events/{{.E.ID}}">Cancel</a>
+    </div>
+  </form>
+</div>
+{{end}}

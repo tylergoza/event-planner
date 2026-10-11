@@ -1,0 +1,29 @@
+{{define "content"}}
+<div class="card narrow">
+  <h2 class="section__title">Edit job</h2>
+  {{template "errors" .Errors}}
+  <form method="post" action="/helper-roles/{{.Form.ID}}" class="form">
+    {{template "csrf" .CSRF}}
+    <div class="field"><label for="name">Job</label><input id="name" name="name" value="{{.Form.Name}}" required maxlength="100"></div>
+    <div class="field-row">
+      <div class="field"><label for="slots">People needed</label><input id="slots" name="slots" type="number" min="1" max="999" value="{{.Form.Slots}}" required></div>
+      <div class="field"><label for="when_text">When <span class="optional">optional</span></label><input id="when_text" name="when_text" value="{{.Form.WhenText}}"></div>
+    </div>
+    <div class="field">
+      <label for="room_id">Room <span class="optional">optional</span></label>
+      <select id="room_id" name="room_id">
+        <option value="0">No particular room</option>
+        {{range .Rooms}}<option value="{{.ID}}" {{if eq .ID $.Form.RoomID}}selected{{end}}>{{.Label}}</option>{{end}}
+      </select>
+    </div>
+    <div class="field"><label for="notes">Notes <span class="optional">optional</span></label><textarea id="notes" name="notes" rows="3">{{.Form.Notes}}</textarea></div>
+    <div class="form__actions">
+      <button type="submit" class="btn btn--primary">Save</button>
+      <a class="btn btn--ghost" href="/events/{{.E.ID}}/helpers#role-{{.Form.ID}}">Cancel</a>
+    </div>
+  </form>
+</div>
+<div class="card narrow">
+  {{template "delete-button" (dict "Action" (printf "/helper-roles/%d/delete" .Form.ID) "CSRF" .CSRF "Label" "Remove job" "Confirm" (printf "Remove %s and everyone signed up for it?" .Form.Name))}}
+</div>
+{{end}}

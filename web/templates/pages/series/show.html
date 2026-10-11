@@ -1,0 +1,75 @@
+{{define "content"}}
+<nav class="crumbs" aria-label="Breadcrumb"><a href="/events">Events</a> › {{.First.Title}}</nav>
+<div class="page-head">
+  <div>
+    <h1>{{.First.Title}} <span class="badge badge--repeat">↻ Repeats</span></h1>
+    <p class="muted">Repeats: {{.Describe}}</p>
+    {{with .Template}}<p class="small">New dates are copied from <a href="/events/{{.ID}}">{{fmtDate .OccurrenceDate}}</a>.</p>{{end}}
+  </div>
+</div>
+
+<section class="card">
+  <h2 class="section__title">Coming up</h2>
+  {{if .Upcoming}}
+  <div class="table-wrap">
+    <table class="table table--stack">
+      <thead><tr><th>Date</th><th>Event</th><th>Status</th><th>Tasks</th></tr></thead>
+      <tbody>
+        {{range .Upcoming}}
+        <tr>
+          <td data-label="Date"><a href="/events/{{.ID}}"><strong>{{fmtDate .StartsOn}}</strong></a>{{if ne .StartsOn .OccurrenceDate}} <span class="muted small">(moved from {{fmtDate .OccurrenceDate}})</span>{{end}}</td>
+          <td data-label="Event"><div>{{.Title}}<br><span class="muted small">{{.When}}</span></div></td>
+          <td data-label="Status">{{template "event-badge" .Status}}{{if .Locked}} {{template "locked-badge"}}{{end}}</td>
+          <td data-label="Tasks"><div class="small">{{.Tasks.Done}} / {{.Tasks.Total}}</div></td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+  {{else}}<p class="muted">No dates coming up.</p>{{end}}
+</section>
+
+{{if .Past}}
+<section class="card section">
+  <details>
+    <summary>Past dates ({{len .Past}})</summary>
+    <ul class="plain-list">
+      {{range .Past}}<li><a href="/events/{{.ID}}">{{fmtDate .StartsOn}}</a> {{template "event-badge" .Status}}</li>{{end}}
+    </ul>
+  </details>
+</section>
+{{end}}
+
+{{if .Skipped}}
+<section class="card section">
+  <h2 class="section__title">Skipped dates</h2>
+  <ul class="impact-list">
+    {{range .Skipped}}
+    <li>{{fmtDate .}}
+      {{if $.User.CanPlan}}
+      <form method="post" action="/series/{{$.S.ID}}/restore" class="inline-form">
+        {{template "csrf" $.CSRF}}
+        <input type="hidden" name="date" value="{{.}}">
+        <button type="submit" class="btn btn--ghost btn--sm">Restore</button>
+      </form>
+      {{end}}
+    </li>
+    {{end}}
+  </ul>
+</section>
+{{end}}
+
+{{if .User.CanPlan}}
+<section class="card section">
+  <h2 class="section__title">End the series…</h2>
+  <p class="muted small">Pick the first date to remove. That date and every later one go; earlier dates stay.</p>
+  <form method="get" action="/series/{{.S.ID}}/end" class="inline-fields">
+    <div class="field">
+      <label for="from">From</label>
+      <input id="from" name="from" type="date" value="{{.Today}}" required>
+    </div>
+    <button type="submit" class="btn btn--danger-ghost">Preview…</button>
+  </form>
+</section>
+{{end}}
+{{end}}

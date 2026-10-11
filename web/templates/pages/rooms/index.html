@@ -1,0 +1,97 @@
+{{define "content"}}
+{{$e := .E}}
+<div class="section__head no-print">
+  <p class="muted small">The rooms this event uses, and how each should be set up.</p>
+  {{if .Rooms}}<a class="btn btn--ghost btn--sm" href="/events/{{$e.ID}}/rooms?print=1">Print set-up sheet</a>{{end}}
+</div>
+
+<div class="two-col two-col--wide-left">
+  <section>
+    {{if .Rooms}}
+    <ul class="room-list">
+      {{range .Rooms}}
+        <li class="card room">
+          <div class="room__head">
+            <h2 class="room__name">{{if .Link}}<a href="{{.Link}}" target="_blank" rel="noopener">{{.PlaceName}}</a>{{else}}{{.PlaceName}}{{end}}
+              {{if not .FromTracker}}<span class="chip">not in tracker</span>{{end}}</h2>
+            {{if $.User.CanPlan}}
+            <div class="actions">
+              {{template "move-buttons" (dict "Action" (printf "/rooms/%d/move" .ID) "CSRF" $.CSRF "Next" (printf "/events/%d/rooms" $e.ID))}}
+              <a class="btn btn--ghost btn--sm" href="/rooms/{{.ID}}/edit">Edit</a>
+              {{template "delete-button" (dict "Action" (printf "/rooms/%d/delete" .ID) "CSRF" $.CSRF "Label" "Delete" "Confirm" (printf "Remove %s from this event? Tasks, needs and the like that point at it stay, with no room." .PlaceName))}}
+            </div>
+            {{end}}
+          </div>
+          {{if .Conflicts}}
+            <div class="alert alert--error" role="alert">Double-booked: also used by
+              {{range $i, $c := .Conflicts}}{{if $i}}, {{end}}<a href="/events/{{$c.ID}}">{{$c.Title}}</a> ({{$c.When}}){{end}}.</div>
+          {{end}}
+          {{with .Purpose}}<p><strong>{{.}}</strong></p>{{end}}
+          {{with .Setup}}<p class="room__setup">{{range lines .}}{{.}}<br>{{end}}</p>{{end}}
+          {{with .Notes}}<p class="muted small">{{range lines .}}{{.}}<br>{{end}}</p>{{end}}
+          {{if not .Usage.Empty}}
+          <dl class="room__uses small">
+            {{if .Usage.Needs}}<dt>Needs</dt><dd>{{range $i, $n := .Usage.Needs}}{{if $i}}, {{end}}{{$n.Name}} × {{$n.Quantity}}{{end}}</dd>{{end}}
+            {{if .Usage.Tasks}}<dt>Tasks</dt><dd>{{range $i, $t := .Usage.Tasks}}{{if $i}}, {{end}}{{$t}}{{end}}</dd>{{end}}
+            {{if .Usage.Schedule}}<dt>Schedule</dt><dd>{{range $i, $t := .Usage.Schedule}}{{if $i}}, {{end}}{{$t}}{{end}}</dd>{{end}}
+            {{if .Usage.Helpers}}<dt>Helpers</dt><dd>{{range $i, $t := .Usage.Helpers}}{{if $i}}, {{end}}{{$t}}{{end}}</dd>{{end}}
+          </dl>
+          {{end}}
+        </li>
+      {{end}}
+    </ul>
+    {{else}}
+      <div class="empty empty--inline"><p>No rooms yet. Pick the rooms this event uses from the maintenance tracker, or add one by name.</p></div>
+    {{end}}
+  </section>
+
+  {{if .User.CanPlan}}
+  <div class="no-print">
+    <section class="card" id="find">
+      <h2 class="section__title">Find a room in the maintenance tracker</h2>
+      {{if .TrackerOn}}
+        <form method="get" action="/events/{{$e.ID}}/rooms#find" class="inline-fields">
+          <div class="field"><label for="q" class="sr-only">Search</label><input id="q" type="search" name="q" value="{{.Q}}" placeholder="e.g. fellowship hall"></div>
+          <button type="submit" class="btn btn--sm">Search</button>
+        </form>
+        {{with .SearchError}}<div class="alert alert--error">Couldn't check the maintenance tracker: {{.}}</div>{{end}}
+        {{if .Q}}
+          {{if .Found}}
+            <ul class="pick-list">
+              {{range .Found}}
+                <li>
+                  <div><strong>{{.Name}}</strong> <span class="chip">{{.Kind}}</span>{{if ne .Path .Name}}<br><span class="muted small">{{.Path}}</span>{{end}}</div>
+                  <form method="post" action="/events/{{$e.ID}}/rooms" class="need-add">
+                    {{template "csrf" $.CSRF}}
+                    <input type="hidden" name="place_id" value="{{.ID}}">
+                    <button type="submit" class="btn btn--sm">Add</button>
+                  </form>
+                </li>
+              {{end}}
+            </ul>
+          {{else if not .SearchError}}
+            <p class="muted small">{{if .FoundAll}}Everything matching "{{.Q}}" is already added.{{else}}Nothing in the tracker matches "{{.Q}}".{{end}}</p>
+          {{end}}
+        {{end}}
+      {{else}}
+        <p class="muted small">Connect the maintenance tracker in Settings to pick rooms from it.</p>
+      {{end}}
+    </section>
+
+    <section class="card">
+      <h2 class="section__title">Somewhere else</h2>
+      <p class="muted small">A room that isn't in the tracker, such as a park shelter.</p>
+      {{template "errors" .Errors}}
+      <form method="post" action="/events/{{$e.ID}}/rooms" class="form">
+        {{template "csrf" .CSRF}}
+        <div class="field">
+          <label for="place_name">Name</label>
+          <input id="place_name" name="place_name" value="{{.Form.PlaceName}}" required>
+        </div>
+        <div class="form__actions"><button type="submit" class="btn btn--primary">Add</button></div>
+      </form>
+    </section>
+  </div>
+  {{end}}
+</div>
+{{end}}

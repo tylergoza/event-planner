@@ -1,0 +1,26 @@
+{{define "content"}}
+<div class="no-print section__head" data-controller="print">
+  <a href="/events/{{.E.ID}}/rooms">Back to rooms</a>
+  <button type="button" class="btn btn--primary" data-action="print#print">Print</button>
+</div>
+<div class="print-sheet">
+  <h1 class="print-title">{{.E.Title}}: room set-up</h1>
+  <p class="muted">{{.E.When}}</p>
+  {{range .Rooms}}
+    <section class="room-sheet">
+      <h2 class="section__title">{{.PlaceName}}</h2>
+      {{with .Purpose}}<p><strong>{{.}}</strong></p>{{end}}
+      {{with .Setup}}<p>{{range lines .}}{{.}}<br>{{end}}</p>{{end}}
+      {{with .Usage.Needs}}
+        <h3>Bring to this room</h3>
+        <ul class="checklist">
+          {{range .}}<li><span class="checklist__box" aria-hidden="true">☐</span> <span class="checklist__text">{{.Quantity}} × {{.Name}}</span></li>{{end}}
+        </ul>
+      {{end}}
+      {{with .Notes}}<p class="muted small">{{range lines .}}{{.}}<br>{{end}}</p>{{end}}
+    </section>
+  {{else}}
+    <p class="muted">No rooms yet.</p>
+  {{end}}
+</div>
+{{end}}

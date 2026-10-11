@@ -1,0 +1,33 @@
+{{define "content"}}
+<div class="two-col two-col--wide-left">
+  <section>
+    {{if .Items}}
+    <div class="table-wrap">
+      <table class="table table--stack">
+        <thead><tr><th>When</th><th>What</th><th>Where</th><th>Notes</th><th><span class="sr-only">Actions</span></th></tr></thead>
+        <tbody>
+          {{range .Items}}
+            <tr class="{{if lt .Date $.Today}}is-past{{end}}">
+              <td data-label="When"><div>{{.When}}<br><span class="muted small">{{relDays .Date}}</span></div></td>
+              <td data-label="What"><strong>{{.Label}}</strong></td>
+              <td data-label="Where">{{.RoomName}}</td>
+              <td data-label="Notes"><div class="small">{{range lines .Notes}}{{.}}<br>{{end}}</div></td>
+              <td class="actions">{{if $.User.CanPlan}}<a class="btn btn--ghost btn--sm" href="/schedule/{{.ID}}/edit">Edit</a>{{end}}</td>
+            </tr>
+          {{end}}
+        </tbody>
+      </table>
+    </div>
+    {{else}}
+      <div class="empty empty--inline"><p>Nothing scheduled yet. Add set-up, doors open, the meal and clean-up here.</p></div>
+    {{end}}
+  </section>
+  {{if .User.CanPlan}}
+  <section class="card add-box">
+    <h2 class="section__title">Add to the schedule</h2>
+    {{template "errors" .Errors}}
+    {{template "schedule-fields" .}}
+  </section>
+  {{end}}
+</div>
+{{end}}

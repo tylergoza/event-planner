@@ -1,0 +1,63 @@
+{{define "content"}}
+<div class="card narrow">
+  <h2 class="section__title">Edit task</h2>
+  {{with .Form.UpdatedBy}}<p class="muted small">Last changed by {{.}}, {{fmtTime $.Form.UpdatedAt}}.{{if $.Form.DoneAt}} Done {{fmtTime $.Form.DoneAt}}.{{end}}</p>{{end}}
+  {{template "errors" .Errors}}
+  <form method="post" action="/tasks/{{.Form.ID}}" class="form">
+    {{template "csrf" .CSRF}}
+    <div class="field">
+      <label for="title">What has to be done</label>
+      <input id="title" name="title" value="{{.Form.Title}}" required>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label for="list_id">List</label>
+        <select id="list_id" name="list_id">
+          <option value="0">Other</option>
+          {{range .Lists}}<option value="{{.ID}}" {{if eq .ID $.Form.ListID}}selected{{end}}>{{.Name}}</option>{{end}}
+        </select>
+      </div>
+      <div class="field">
+        <label for="status">Status</label>
+        <select id="status" name="status">
+          {{range .Statuses}}<option value="{{.}}" {{if eq . $.Form.Status}}selected{{end}}>{{taskStatusLabel .}}</option>{{end}}
+        </select>
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label for="assignee_id">Who <span class="optional">pick a person</span></label>
+        <select id="assignee_id" name="assignee_id">
+          <option value="0">Nobody</option>
+          {{range .Users}}<option value="{{.ID}}" {{if eq .ID $.Form.AssigneeID}}selected{{end}}>{{.Name}}{{if not .Active}} (no access){{end}}</option>{{end}}
+        </select>
+      </div>
+      <div class="field">
+        <label for="assignee_name">or a name <span class="optional">e.g. Youth group</span></label>
+        <input id="assignee_name" name="assignee_name" value="{{.Form.AssigneeName}}">
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label for="due_on">Due <span class="optional">optional</span></label><input id="due_on" name="due_on" type="date" value="{{.Form.DueOn}}"></div>
+      <div class="field">
+        <label for="room_id">Room <span class="optional">optional</span></label>
+        <select id="room_id" name="room_id">
+          <option value="0">No particular room</option>
+          {{range .Rooms}}<option value="{{.ID}}" {{if eq .ID $.Form.RoomID}}selected{{end}}>{{.Label}}</option>{{end}}
+        </select>
+      </div>
+    </div>
+    <div class="field">
+      <label for="notes">Notes <span class="optional">optional</span></label>
+      <textarea id="notes" name="notes" rows="3">{{.Form.Notes}}</textarea>
+    </div>
+    <div class="form__actions">
+      <button type="submit" class="btn btn--primary">Save</button>
+      <a class="btn btn--ghost" href="/events/{{.E.ID}}/tasks">Cancel</a>
+    </div>
+  </form>
+</div>
+<div class="card narrow">
+  {{template "delete-button" (dict "Action" (printf "/tasks/%d/delete" .Form.ID) "CSRF" .CSRF "Label" "Remove" "Confirm" (printf "Remove %s?" .Form.Title))}}
+</div>
+{{end}}

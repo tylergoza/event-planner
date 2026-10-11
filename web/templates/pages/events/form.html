@@ -1,0 +1,117 @@
+{{define "content"}}
+<nav class="crumbs" aria-label="Breadcrumb"><a href="/events">Events</a>{{if .Form.ID}} › <a href="/events/{{.Form.ID}}">{{.Form.Title}}</a>{{end}}</nav>
+<div class="page-head"><div><h1>{{.Title}}</h1></div></div>
+<div class="card narrow">
+  {{template "errors" .Errors}}
+  <form method="post" action="{{if .Form.ID}}/events/{{.Form.ID}}{{else}}/events{{end}}" class="form"
+        data-controller="reveal" data-action="change->reveal#update">
+    {{template "csrf" .CSRF}}
+    <div class="field">
+      <label for="title">Title</label>
+      <input id="title" name="title" value="{{.Form.Title}}" required maxlength="200" {{if not .Form.ID}}autofocus{{end}}>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label for="kind">Kind <span class="optional">optional</span></label>
+        <input id="kind" name="kind" value="{{.Form.Kind}}" placeholder="e.g. Fellowship dinner" list="event-kinds">
+        <datalist id="event-kinds">
+          <option value="Fellowship dinner"><option value="Work day"><option value="Meeting">
+          <option value="Outreach"><option value="Retreat"><option value="Service">
+        </datalist>
+      </div>
+      <div class="field">
+        <label for="status">Status</label>
+        <select id="status" name="status">
+          {{range .Statuses}}<option value="{{.}}" {{if eq . $.Form.Status}}selected{{end}}>{{eventStatusLabel .}}</option>{{end}}
+        </select>
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label for="starts_on">Starts</label><input id="starts_on" name="starts_on" type="date" value="{{.Form.StartsOn}}" required></div>
+      <div class="field"><label for="start_time">At <span class="optional">optional</span></label><input id="start_time" name="start_time" type="time" value="{{.Form.StartTime}}"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label for="ends_on">Ends <span class="optional">optional, if more than a day</span></label><input id="ends_on" name="ends_on" type="date" value="{{.Form.EndsOn}}"></div>
+      <div class="field"><label for="end_time">At <span class="optional">optional</span></label><input id="end_time" name="end_time" type="time" value="{{.Form.EndTime}}"></div>
+    </div>
+    {{if .Form.SeriesID}}
+    <fieldset class="fieldset">
+      <legend>Apply changes to</legend>
+      <div class="segmented">
+        <label><input type="radio" name="apply" value="this" required {{if ne .Apply "later"}}checked{{end}}> Just this date</label>
+        <label><input type="radio" name="apply" value="later" required {{if eq .Apply "later"}}checked{{end}}> This and later dates</label>
+      </div>
+      <p class="hint">"This and later" copies the details you changed (title, kind, times, coordinator, headcount, descriptions, visibility, notes) to the dates after this one. Status, access and the day itself stay per date. This date repeats from {{fmtDate .Form.OccurrenceDate}}. <a href="/events/{{.Form.ID}}/repeat">Change the repeat pattern from this date</a></p>
+    </fieldset>
+    {{else}}
+    {{template "repeat-fields" .Repeat}}
+    {{end}}
+    <div class="field-row">
+      <div class="field">
+        <label for="coordinator">Coordinator <span class="optional">optional</span></label>
+        <input id="coordinator" name="coordinator" value="{{.Form.Coordinator}}">
+      </div>
+      <div class="field field--narrow">
+        <label for="expected_count">Headcount <span class="optional">optional</span></label>
+        <input id="expected_count" name="expected_count" type="number" min="0" value="{{if .Form.ExpectedCount}}{{.Form.ExpectedCount}}{{end}}">
+      </div>
+    </div>
+    <div class="field">
+      <label for="description">About it <span class="optional">optional</span></label>
+      <textarea id="description" name="description" rows="3">{{.Form.Description}}</textarea>
+    </div>
+    <div class="field">
+      <label for="notes">Notes <span class="optional">optional</span></label>
+      <textarea id="notes" name="notes" rows="4">{{.Form.Notes}}</textarea>
+      <p class="hint">Anything the team should know: parking, who has the keys.</p>
+    </div>
+    <fieldset class="fieldset">
+      <legend>Who can see the details</legend>
+      <div class="segmented">
+        <label><input type="radio" name="visibility" value="private" {{if ne .Form.Visibility "public"}}checked{{end}}> Private</label>
+        <label><input type="radio" name="visibility" value="public" {{if eq .Form.Visibility "public"}}checked{{end}}> Public</label>
+      </div>
+      <p class="hint">Private (the default): outside the app it only shows that its rooms are busy. Public: shows on the public calendar and to API tokens.</p>
+    </fieldset>
+    <div class="field">
+      <label for="public_description">Public description <span class="optional">optional</span></label>
+      <textarea id="public_description" name="public_description" rows="3">{{.Form.PublicDescription}}</textarea>
+      <p class="hint">Shown on the public calendar. Leave internal notes in Notes.</p>
+    </div>
+    {{if .User.IsAdmin}}
+    <fieldset class="fieldset">
+      <legend>Who can see it</legend>
+      <div class="segmented">
+        <label><input type="radio" name="access" value="open" {{if not .Form.Locked}}checked{{end}}> Everyone signed in</label>
+        <label><input type="radio" name="access" value="locked" {{if .Form.Locked}}checked{{end}}> Only these people</label>
+      </div>
+      <div class="member-list" data-reveal-target="section" data-reveal-when="access=locked">
+        {{range .Users}}
+          {{if ne .Role "admin"}}<label class="check"><input type="checkbox" name="member" value="{{.ID}}" {{if index $.IsMember .ID}}checked{{end}}> {{.Name}}{{if not .Active}} <span class="muted small">(no access)</span>{{end}}</label>{{end}}
+        {{end}}
+        <p class="hint">Nobody else will see it or be able to change it. Admins always see every event.</p>
+      </div>
+    </fieldset>
+    {{else if .Form.Locked}}
+    <p class="hint">Locked: only the people an admin picked can see it.</p>
+    {{end}}
+    <div class="form__actions">
+      <button type="submit" class="btn btn--primary">{{if .Form.ID}}Save{{else}}Add event{{end}}</button>
+      <a class="btn btn--ghost" href="{{if .Form.ID}}/events/{{.Form.ID}}{{else}}/events{{end}}">Cancel</a>
+    </div>
+  </form>
+</div>
+{{if .Form.ID}}
+<div class="card narrow danger-zone">
+  {{if .Form.SeriesID}}
+  <h2 class="section__title">Skip this date</h2>
+  <p class="muted small">Removes only {{fmtDate .Form.OccurrenceDate}}, with its schedule, tasks, rooms, helpers and needs. The other dates aren't affected, and the series won't bring this one back unless you restore it. To remove all later dates, <a href="/events/{{.Form.ID}}/end-series">end the series from this date</a>.</p>
+  {{template "delete-button" (dict "Action" (printf "/events/%d/delete" .Form.ID) "CSRF" .CSRF "Label" "Skip this date" "Confirm" (printf "Remove only %s? Other dates in the series aren't affected." (fmtDate .Form.OccurrenceDate)))}}
+  {{else}}
+  <h2 class="section__title">Delete this event</h2>
+  <p class="muted small">Deletes its schedule, tasks, rooms, helpers and needs. Nothing in the maintenance tracker is touched. To keep it on record instead, set its status to Done.</p>
+  {{template "delete-button" (dict "Action" (printf "/events/%d/delete" .Form.ID) "CSRF" .CSRF "Label" "Delete event" "Confirm" (printf "Delete %s and everything in it? This can't be undone." .Form.Title))}}
+  {{end}}
+</div>
+{{end}}
+{{end}}

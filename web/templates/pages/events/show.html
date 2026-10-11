@@ -1,0 +1,75 @@
+{{define "content"}}
+{{$e := .E}}{{$sum := .Sum}}
+{{with .CopiedFrom}}<p class="muted small">Copied from <a href="/events/{{.ID}}">{{.Title}}</a></p>{{end}}
+<div class="stat-grid">
+  <a class="stat" href="/events/{{$e.ID}}/schedule">
+    <span class="stat__label">When</span>
+    <span class="stat__value">{{relDays $e.StartsOn}}</span>
+    <span class="stat__sub">{{$e.When}}</span>
+  </a>
+  <a class="stat" href="/events/{{$e.ID}}/tasks">
+    <span class="stat__label">Tasks done</span>
+    <span class="stat__value">{{$sum.Tasks.Done}} <small>of {{$sum.Tasks.Total}}</small></span>
+    {{template "progress" $sum.Tasks}}
+    {{if $sum.Overdue}}<span class="stat__sub text-alert">{{$sum.Overdue}} overdue</span>{{end}}
+  </a>
+  <a class="stat" href="/events/{{$e.ID}}/needs">
+    <span class="stat__label">Needs gathered</span>
+    <span class="stat__value">{{$sum.Needs.Done}} <small>of {{$sum.Needs.Total}}</small></span>
+    {{template "progress" $sum.Needs}}
+  </a>
+  <a class="stat" href="/events/{{$e.ID}}/rooms">
+    <span class="stat__label">Rooms</span>
+    <span class="stat__value">{{.RoomCount}}</span>
+    {{if .RoomConflicts}}<span class="stat__sub text-alert">{{pluralize .RoomConflicts "room"}} double-booked</span>{{end}}
+  </a>
+  <a class="stat" href="/events/{{$e.ID}}/helpers">
+    <span class="stat__label">Helpers</span>
+    <span class="stat__value">{{.Helpers.Filled}} <small>of {{.Helpers.Slots}} spots</small></span>
+    {{if .Helpers.ShortJobs}}<span class="stat__sub text-alert">{{pluralize .Helpers.ShortJobs "job"}} short</span>{{end}}
+  </a>
+  <div class="stat">
+    <span class="stat__label">Headcount</span>
+    <span class="stat__value">{{if $e.ExpectedCount}}{{$e.ExpectedCount}}{{else}}—{{end}}</span>
+    <span class="stat__sub">{{with $e.Coordinator}}Coordinator: {{.}}{{else}}No coordinator yet{{end}}</span>
+  </div>
+</div>
+
+<div class="two-col section">
+  <div>
+    {{if .Attention}}
+    <section class="card card--alert">
+      <h2 class="section__title">Needs attention</h2>
+      <ul class="plain-list">
+        {{range .Attention}}
+          <li>{{template "task-badge" .Status}} <a href="/events/{{$e.ID}}/tasks#task-{{.ID}}">{{.Title}}</a>
+            <span class="muted small">{{with .Assignee}}· {{.}} {{end}}{{if .Overdue $.Today}}· was due {{fmtDate .DueOn}}{{end}}</span></li>
+        {{end}}
+      </ul>
+    </section>
+    {{end}}
+
+    <section class="card notes">
+      <h2 class="section__title">About</h2>
+      {{with $e.Description}}{{range lines .}}<p>{{.}}</p>{{end}}{{else}}<p class="muted">No description yet.{{if $.User.CanPlan}} <a href="/events/{{$e.ID}}/edit">Add one</a>.{{end}}</p>{{end}}
+      {{with $e.Notes}}<h2 class="section__title">Notes</h2>{{range lines .}}<p>{{.}}</p>{{end}}{{end}}
+    </section>
+  </div>
+
+  <div>
+    <section class="card">
+      <h2 class="section__title">Coming up</h2>
+      {{if .Upcoming}}
+        <ul class="event-list">
+          {{range .Upcoming}}
+            <li><strong>{{.Label}}</strong> {{.When}}{{with .RoomName}} <span class="muted small">· {{.}}</span>{{end}}</li>
+          {{end}}
+        </ul>
+      {{else}}
+        <p class="muted">Nothing on the schedule ahead.</p>
+      {{end}}
+      <p><a href="/events/{{$e.ID}}/schedule">Full schedule</a></p>
+    </section>
+  </div>
+</div>
+{{end}}

@@ -1,0 +1,118 @@
+{{define "content"}}
+{{$e := .E}}
+<div class="section__head">
+  <div class="progress-total">
+    <strong>{{.Tally.Filled}} of {{.Tally.Slots}} spots filled</strong>{{if .Tally.ShortJobs}} <span class="text-alert small">· {{pluralize .Tally.ShortJobs "job"}} still short</span>{{end}}
+    {{template "progress" .Progress}}
+  </div>
+</div>
+
+<div class="two-col two-col--wide-left">
+  <div>
+    {{range .Roles}}
+      {{$role := .}}
+      <section class="card helper-role" id="role-{{.ID}}">
+        <div class="section__head">
+          <h2 class="section__title">{{.Name}}
+            {{if .Over}}<span class="badge badge--task-blocked">{{len .Helpers}} of {{.Slots}} · over by {{.Over}}</span>
+            {{else if .Short}}<span class="badge badge--task-in_progress">{{len .Helpers}} of {{.Slots}} · short by {{.Short}}</span>
+            {{else}}<span class="badge badge--task-done">{{len .Helpers}} of {{.Slots}} · full</span>{{end}}
+          </h2>
+          {{if $.User.CanPlan}}<a class="btn btn--ghost btn--sm" href="/helper-roles/{{.ID}}/edit">Edit</a>{{end}}
+        </div>
+        <p class="muted small">{{with .WhenText}}{{.}}{{end}}{{with .RoomName}}{{if $role.WhenText}} · {{end}}<span class="chip">{{.}}</span>{{end}}</p>
+        {{with .Notes}}<p class="small">{{.}}</p>{{end}}
+        {{if .Over}}<p class="small text-alert">More people are signed up than this job needs.</p>{{end}}
+
+        {{if .Helpers}}
+        <ul class="pick-list">
+          {{range .Helpers}}
+            <li>
+              <span><strong>{{.Name}}</strong>{{with .Phone}} · {{.}}{{end}}{{with .Notes}}<br><span class="muted small">{{.}}</span>{{end}}</span>
+              <span class="list-tools__row">
+                <a class="btn btn--ghost btn--sm" href="/helpers/{{.ID}}/edit">Edit</a>
+                {{template "delete-button" (dict "Action" (printf "/helpers/%d/delete" .ID) "CSRF" $.CSRF "Label" "Remove" "Confirm" (printf "Take %s off %s?" .Name $role.Name))}}
+              </span>
+            </li>
+          {{end}}
+        </ul>
+        {{else}}<p class="muted small">Nobody yet.</p>{{end}}
+
+        <div class="list-tools__row">
+          {{if .HasUser $.Me}}
+            <form method="post" action="/helper-roles/{{.ID}}/me/delete" class="inline-form">{{template "csrf" $.CSRF}}<button type="submit" class="btn btn--sm">Take me off</button></form>
+          {{else}}
+            <form method="post" action="/helper-roles/{{.ID}}/me" class="inline-form">{{template "csrf" $.CSRF}}<button type="submit" class="btn btn--sm btn--primary">Sign me up</button></form>
+          {{end}}
+          {{if $.User.CanPlan}}{{template "move-buttons" (dict "Action" (printf "/helper-roles/%d/move" .ID) "CSRF" $.CSRF "Next" (printf "/events/%d/helpers#role-%d" $e.ID .ID))}}{{end}}
+        </div>
+
+        <details class="list-tools">
+          <summary>Sign someone up</summary>
+          <form method="post" action="/helper-roles/{{.ID}}/signup" class="form">
+            {{template "csrf" $.CSRF}}
+            <div class="field-row">
+              <div class="field">
+                <label for="user-{{.ID}}">A person <span class="optional">pick one</span></label>
+                <select id="user-{{.ID}}" name="user_id">
+                  <option value="0">Pick a person</option>
+                  {{range $.Users}}<option value="{{.ID}}">{{.Name}}</option>{{end}}
+                </select>
+              </div>
+              <div class="field">
+                <label for="name-{{.ID}}">or a name <span class="optional">e.g. a visitor</span></label>
+                <input id="name-{{.ID}}" name="name">
+              </div>
+              <div class="field">
+                <label for="phone-{{.ID}}">Phone <span class="optional">with a name</span></label>
+                <input id="phone-{{.ID}}" name="phone" type="tel">
+              </div>
+            </div>
+            <div class="form__actions"><button type="submit" class="btn btn--sm">Sign up</button></div>
+          </form>
+        </details>
+      </section>
+    {{else}}
+      <div class="empty empty--inline">
+        <h2>No jobs yet</h2>
+        <p>Add the jobs that need doing (greeters, set-up, dishes) and sign people up for them.</p>
+      </div>
+    {{end}}
+  </div>
+
+  {{if .User.CanPlan}}
+  <section class="card add-box">
+    <h2 class="section__title">Add a job</h2>
+    <form method="post" action="/events/{{$e.ID}}/helper-roles" class="form">
+      {{template "csrf" .CSRF}}
+      <div class="field"><label for="role-name">Job</label><input id="role-name" name="name" required maxlength="100"></div>
+      <div class="field-row">
+        <div class="field"><label for="role-slots">People needed</label><input id="role-slots" name="slots" type="number" min="1" max="999" value="1" required></div>
+        <div class="field"><label for="role-when">When <span class="optional">optional</span></label><input id="role-when" name="when_text" placeholder="5:00-6:30"></div>
+      </div>
+      <div class="field">
+        <label for="role-room">Room <span class="optional">optional</span></label>
+        <select id="role-room" name="room_id">
+          <option value="0">No particular room</option>
+          {{range .Rooms}}<option value="{{.ID}}">{{.Label}}</option>{{end}}
+        </select>
+      </div>
+      <div class="field"><label for="role-notes">Notes <span class="optional">optional</span></label><textarea id="role-notes" name="notes" rows="2"></textarea></div>
+      <div class="form__actions"><button type="submit" class="btn btn--primary">Add job</button></div>
+    </form>
+    <details class="list-tools">
+      <summary>Paste many jobs</summary>
+      <form method="post" action="/events/{{$e.ID}}/helper-roles/paste" class="form">
+        {{template "csrf" .CSRF}}
+        <div class="field">
+          <label for="role-paste">One job per line</label>
+          <textarea id="role-paste" name="text" rows="5" placeholder="Greeters x3&#10;Dishes - 4&#10;Parking"></textarea>
+          <p class="muted small">Add <code>x3</code> or <code>- 3</code> after a name for 3 people.</p>
+        </div>
+        <div class="form__actions"><button type="submit" class="btn btn--sm">Add them</button></div>
+      </form>
+    </details>
+  </section>
+  {{end}}
+</div>
+{{end}}

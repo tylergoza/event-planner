@@ -1,0 +1,80 @@
+{{/* Form fields shared by an "add" box on a list page and its edit page. */}}
+
+{{/* Schedule item fields. Pass the page data (.Form, .Rooms, .CSRF, .E). */}}
+{{define "schedule-fields"}}
+  <form method="post" action="{{if .Form.ID}}/schedule/{{.Form.ID}}{{else}}/events/{{.E.ID}}/schedule{{end}}" class="form">
+    {{template "csrf" .CSRF}}
+    <div class="field">
+      <label for="label">What happens</label>
+      <input id="label" name="label" value="{{.Form.Label}}" required placeholder="e.g. Set up tables, Doors open, Dinner served">
+    </div>
+    <div class="field-row">
+      <div class="field"><label for="date">Date</label><input id="date" name="date" type="date" value="{{.Form.Date}}" required></div>
+      <div class="field"><label for="time">From <span class="optional">optional</span></label><input id="time" name="time" type="time" value="{{.Form.Time}}"></div>
+      <div class="field"><label for="end_time">Until <span class="optional">optional</span></label><input id="end_time" name="end_time" type="time" value="{{.Form.EndTime}}"></div>
+    </div>
+    <div class="field">
+      <label for="room_id">Where <span class="optional">optional</span></label>
+      <select id="room_id" name="room_id">
+        <option value="0">No particular room</option>
+        {{range .Rooms}}<option value="{{.ID}}" {{if eq .ID $.Form.RoomID}}selected{{end}}>{{.Label}}</option>{{end}}
+      </select>
+    </div>
+    <div class="field">
+      <label for="notes">Notes <span class="optional">optional</span></label>
+      <textarea id="notes" name="notes" rows="2">{{.Form.Notes}}</textarea>
+    </div>
+    <div class="form__actions">
+      <button type="submit" class="btn btn--primary">{{if .Form.ID}}Save{{else}}Add to schedule{{end}}</button>
+      {{if .Form.ID}}<a class="btn btn--ghost" href="/events/{{.E.ID}}/schedule">Cancel</a>{{end}}
+    </div>
+  </form>
+{{end}}
+
+{{/* Quick status change. dict "Action" url "CSRF" token "Status" current "Statuses" []string "Label" ("task"|"need") "ID" anchor-id "Next" return-url */}}
+{{define "status-select"}}
+  <form method="post" action="{{.Action}}" class="inline-form status-form" data-controller="autosubmit">
+    {{template "csrf" .CSRF}}
+    {{with .Next}}<input type="hidden" name="next" value="{{.}}">{{end}}
+    <label class="sr-only" for="st-{{.Label}}-{{.ID}}">Status</label>
+    <select id="st-{{.Label}}-{{.ID}}" name="status" data-action="autosubmit#submit" class="status-select status-select--{{.Status}}">
+      {{range .Statuses}}<option value="{{.}}" {{if eq . $.Status}}selected{{end}}>{{if eq $.Label "need"}}{{needStatusLabel .}}{{else}}{{taskStatusLabel .}}{{end}}</option>{{end}}
+    </select>
+    <noscript><button type="submit" class="btn btn--sm">Set</button></noscript>
+  </form>
+{{end}}
+
+{{/* Fields for a need: name, how many, department, notes, and status when editing. Pass the page data. */}}
+{{define "need-fields"}}
+    <div class="field">
+      <label for="need-name">What</label>
+      <input id="need-name" name="name" value="{{.Form.Name}}" required>
+    </div>
+    <div class="field-row">
+      <div class="field field--narrow">
+        <label for="quantity">How many</label>
+        <input id="quantity" name="quantity" type="number" min="1" value="{{.Form.Quantity}}" required>
+      </div>
+      {{if .Rooms}}
+      <div class="field">
+        <label for="need-room">Goes to <span class="optional">optional</span></label>
+        <select id="need-room" name="room_id">
+          <option value="0">No particular room</option>
+          {{range .Rooms}}<option value="{{.ID}}" {{if eq .ID $.Form.RoomID}}selected{{end}}>{{.Label}}</option>{{end}}
+        </select>
+      </div>
+      {{end}}
+    </div>
+    {{if .Form.ID}}
+    <div class="field">
+      <label for="need-status">Status</label>
+      <select id="need-status" name="status">
+        {{range .Statuses}}<option value="{{.}}" {{if eq . $.Form.Status}}selected{{end}}>{{needStatusLabel .}}</option>{{end}}
+      </select>
+    </div>
+    {{end}}
+    <div class="field">
+      <label for="need-notes">Notes <span class="optional">optional</span></label>
+      <input id="need-notes" name="notes" value="{{.Form.Notes}}" placeholder="e.g. where to get it, who's bringing it">
+    </div>
+{{end}}

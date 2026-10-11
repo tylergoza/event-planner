@@ -1,0 +1,8 @@
+{{define "content"}}
+{{$e := .E}}{{$p := .P}}
+<div class="section__head no-print">
+  <p class="muted">Everyone with a task or a job, and what nobody has yet.</p>
+  <a class="btn btn--ghost btn--sm" href="/events/{{$e.ID}}/people?print=1">Print</a>
+</div>
+{{template "people-body" .}}
+{{end}}

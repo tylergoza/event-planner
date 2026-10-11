@@ -1,0 +1,86 @@
+{{define "content"}}
+{{$e := .E}}
+<div class="section__head">
+  <div class="progress-total">
+    <strong>{{.Total.Done}} of {{.Total.Total}} done</strong>{{if .Overdue}} <span class="text-alert small">· {{.Overdue}} overdue</span>{{end}}
+    {{template "progress" .Total}}
+  </div>
+  <div class="filters" role="group" aria-label="Show">
+    {{range .Filters}}<a class="btn btn--sm {{if eq $.Filter .Key}}btn--primary{{else}}btn--ghost{{end}}" href="/events/{{$e.ID}}/tasks{{if ne .Key "all"}}?filter={{.Key}}{{end}}" {{if eq $.Filter .Key}}aria-current="page"{{end}}>{{.Label}}</a>{{end}}
+    <a class="btn btn--sm btn--ghost" href="/events/{{$e.ID}}/tasks?print=1{{if ne .Filter "all"}}&amp;filter={{.Filter}}{{end}}">Print</a>
+  </div>
+</div>
+
+<div class="two-col two-col--wide-left">
+  <div>
+    {{range .Groups}}
+      <section class="section task-list" id="{{if .List}}list-{{.List.ID}}{{else}}list-other{{end}}">
+        <div class="section__head">
+          <h2 class="section__title">{{.Name}} <span class="count">{{.Tally.Done}}/{{.Tally.Total}}</span></h2>
+          {{template "progress" .Tally}}
+        </div>
+        {{if .Tasks}}
+        <div class="table-wrap">
+          <table class="table table--stack">
+            <thead><tr><th>Task</th><th>Who</th><th>Due</th><th>Status</th><th><span class="sr-only">Actions</span></th></tr></thead>
+            <tbody>
+              {{range .Tasks}}
+                <tr id="task-{{.ID}}" class="task-row task-row--{{.Status}}">
+                  <td data-label="Task"><div><strong>{{.Title}}</strong>{{with .RoomName}} <span class="chip">{{.}}</span>{{end}}{{with .Notes}}<br><span class="muted small">{{.}}</span>{{end}}</div></td>
+                  <td data-label="Who">{{.Assignee}}</td>
+                  <td data-label="Due">{{if .DueOn}}<span class="{{if .Overdue $.Today}}text-alert{{end}}">{{fmtDate .DueOn}}{{if .Overdue $.Today}} (overdue){{end}}</span>{{end}}</td>
+                  <td data-label="Status">{{template "status-select" (dict "Action" (printf "/tasks/%d/status" .ID) "CSRF" $.CSRF "Status" .Status "Statuses" $.Statuses "Label" "task" "ID" .ID "Next" $.URI)}}</td>
+                  <td class="actions"><a class="btn btn--ghost btn--sm" href="/tasks/{{.ID}}/edit">Edit</a></td>
+                </tr>
+              {{end}}
+            </tbody>
+          </table>
+        </div>
+        {{else}}
+          <p class="muted small">{{if eq $.Filter "all"}}No tasks yet.{{else}}Nothing here for this view.{{end}}</p>
+        {{end}}
+
+        <form method="post" action="/events/{{$e.ID}}/tasks" class="inline-fields quick-add">
+          {{template "csrf" $.CSRF}}
+          <input type="hidden" name="list_id" value="{{if .List}}{{.List.ID}}{{else}}0{{end}}">
+          <div class="field"><label class="sr-only" for="add-{{if .List}}{{.List.ID}}{{else}}other{{end}}">Add a task to {{.Name}}</label>
+            <input id="add-{{if .List}}{{.List.ID}}{{else}}other{{end}}" name="title" required placeholder="Add a task to {{.Name}}"></div>
+          <button type="submit" class="btn btn--sm">Add</button>
+        </form>
+        <details class="list-tools">
+          <summary>Paste many{{if .List}}, rename or remove this list{{end}}</summary>
+          <form method="post" action="/events/{{$e.ID}}/tasks/paste" class="form">
+            {{template "csrf" $.CSRF}}
+            <input type="hidden" name="list_id" value="{{if .List}}{{.List.ID}}{{else}}0{{end}}">
+            <div class="field">
+              <label for="paste-{{if .List}}{{.List.ID}}{{else}}other{{end}}">One task per line</label>
+              <textarea id="paste-{{if .List}}{{.List.ID}}{{else}}other{{end}}" name="text" rows="4"></textarea>
+            </div>
+            <div class="form__actions"><button type="submit" class="btn btn--sm">Add them</button></div>
+          </form>
+          {{with .List}}
+            <form method="post" action="/task-lists/{{.ID}}" class="inline-fields">
+              {{template "csrf" $.CSRF}}
+              <div class="field"><label class="sr-only" for="rename-{{.ID}}">List name</label><input id="rename-{{.ID}}" name="name" value="{{.Name}}" required></div>
+              <button type="submit" class="btn btn--sm">Rename</button>
+            </form>
+            <div class="list-tools__row">
+              {{template "move-buttons" (dict "Action" (printf "/task-lists/%d/move" .ID) "CSRF" $.CSRF "Next" (printf "/events/%d/tasks#list-%d" $e.ID .ID))}}
+              {{template "delete-button" (dict "Action" (printf "/task-lists/%d/delete" .ID) "CSRF" $.CSRF "Label" "Remove list" "Confirm" (printf "Remove the %s list? Its tasks stay, under Other." .Name))}}
+            </div>
+          {{end}}
+        </details>
+      </section>
+    {{end}}
+  </div>
+  <section class="card add-box">
+    <h2 class="section__title">Add a list</h2>
+    <p class="muted small">Group tasks, e.g. Before, Kitchen, Clean-up.</p>
+    <form method="post" action="/events/{{$e.ID}}/task-lists" class="form">
+      {{template "csrf" .CSRF}}
+      <div class="field"><label for="list-name">Name</label><input id="list-name" name="name" required maxlength="100"></div>
+      <div class="form__actions"><button type="submit" class="btn btn--primary">Add list</button></div>
+    </form>
+  </section>
+</div>
+{{end}}

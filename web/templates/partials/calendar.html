@@ -1,0 +1,13 @@
+{{define "cal-item"}}
+  {{if .Busy}}
+    <p class="cal-item cal-item--busy">{{.BusyText}}</p>
+  {{else}}
+    <div class="cal-item">
+      <span class="cal-item__when">{{.When}}</span>
+      <a class="cal-item__title" href="/calendar/{{.EventID}}">{{.Title}}</a>
+      {{if .Kind}}<span class="cal-item__kind muted">{{.Kind}}</span>{{end}}
+      {{if .Rooms}}<span class="cal-item__rooms muted">{{range $i, $r := .Rooms}}{{if $i}}, {{end}}{{$r}}{{end}}</span>{{end}}
+      {{if .User}}<a class="cal-item__inside small" href="/events/{{.EventID}}">Planning page</a>{{end}}
+    </div>
+  {{end}}
+{{end}}

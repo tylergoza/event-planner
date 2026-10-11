@@ -1,0 +1,35 @@
+{{define "content"}}
+<div class="card narrow">
+  <h2 class="section__title">Edit {{.Form.PlaceName}}</h2>
+  {{if .Form.FromTracker}}<p class="muted small">A place in the maintenance tracker{{with .TrackerLink}} · <a href="{{.}}" target="_blank" rel="noopener">open it there</a>{{end}}.</p>{{end}}
+  {{template "errors" .Errors}}
+  <form method="post" action="/rooms/{{.Form.ID}}" class="form">
+    {{template "csrf" .CSRF}}
+    {{if not .Form.FromTracker}}
+    <div class="field">
+      <label for="place_name">Name</label>
+      <input id="place_name" name="place_name" value="{{.Form.PlaceName}}" required>
+    </div>
+    {{end}}
+    <div class="field">
+      <label for="purpose">What it's for <span class="optional">optional</span></label>
+      <input id="purpose" name="purpose" value="{{.Form.Purpose}}" placeholder="e.g. Dinner seating">
+    </div>
+    <div class="field">
+      <label for="setup">Set-up <span class="optional">optional</span></label>
+      <textarea id="setup" name="setup" rows="5" placeholder="e.g. 8 round tables, 64 chairs, stage left clear">{{.Form.Setup}}</textarea>
+    </div>
+    <div class="field">
+      <label for="notes">Notes <span class="optional">optional</span></label>
+      <textarea id="notes" name="notes" rows="3">{{.Form.Notes}}</textarea>
+    </div>
+    <div class="form__actions">
+      <button type="submit" class="btn btn--primary">Save</button>
+      <a class="btn btn--ghost" href="/events/{{.E.ID}}/rooms">Cancel</a>
+    </div>
+  </form>
+</div>
+<div class="card narrow">
+  {{template "delete-button" (dict "Action" (printf "/rooms/%d/delete" .Form.ID) "CSRF" .CSRF "Label" "Remove" "Confirm" (printf "Remove %s from this event?" .Form.PlaceName))}}
+</div>
+{{end}}

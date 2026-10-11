@@ -1,0 +1,13 @@
+{{define "content"}}
+<p class="crumbs"><a href="/calendar">&larr; Calendar</a></p>
+<article class="card narrow cal-event">
+  <h1>{{.C.Title}}</h1>
+  {{if .C.Kind}}<p class="muted">{{.C.Kind}}</p>{{end}}
+  <dl class="cal-event__facts">
+    <dt>When</dt><dd>{{.When}}</dd>
+    {{if .C.Rooms}}<dt>Where</dt><dd>{{range $i, $r := .C.Rooms}}{{if $i}}, {{end}}{{$r}}{{end}}</dd>{{end}}
+  </dl>
+  {{if .C.PublicDescription}}<p class="cal-desc">{{.C.PublicDescription}}</p>{{end}}
+  {{if .User}}<p><a class="btn btn--sm" href="/events/{{.C.EventID}}">Open the planning page</a></p>{{end}}
+</article>
+{{end}}
