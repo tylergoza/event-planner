@@ -42,3 +42,9 @@ Ansible), check whether the siblings should get the same change.
   The main Caddyfile text must stay identical in every repo's deploy.yml.
   `deploy/ansible/vars.yml` is gitignored.
 - The user runs all `git commit`s themselves (YubiKey signing). Don't commit.
+- `CALENDAR_PLAN.md` is this app's part of joining `../calendar` (8120);
+  tick its checkboxes as steps are done. Everything there is optional:
+  this app must keep working when `CALENDAR_URL` is unset.
+- `CONNECTIONS_PLAN.md` (this app is the reference build): links to
+  other apps are admin settings on `/admin/connections`; env vars override
+  them per whole connection. Secrets encrypted with `secrets.key`.
