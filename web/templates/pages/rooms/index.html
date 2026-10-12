@@ -7,6 +7,7 @@
 
 <div class="two-col two-col--wide-left">
   <section>
+    {{if .CalendarDown}}<p class="muted small">Couldn't reach the calendar, so only this app's events were checked.</p>{{end}}
     {{if .Rooms}}
     <ul class="room-list">
       {{range .Rooms}}
@@ -25,6 +26,10 @@
           {{if .Conflicts}}
             <div class="alert alert--error" role="alert">Double-booked: also used by
               {{range $i, $c := .Conflicts}}{{if $i}}, {{end}}<a href="/events/{{$c.ID}}">{{$c.Title}}</a> ({{$c.When}}){{end}}.</div>
+          {{end}}
+          {{if .Clashes}}
+            <div class="alert alert--error" role="alert">Also booked on the calendar:
+              {{range $i, $c := .Clashes}}{{if $i}}; {{end}}{{template "clash" $c}}{{end}}.</div>
           {{end}}
           {{with .Purpose}}<p><strong>{{.}}</strong></p>{{end}}
           {{with .Setup}}<p class="room__setup">{{range lines .}}{{.}}<br>{{end}}</p>{{end}}

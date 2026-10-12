@@ -133,3 +133,5 @@
     {{end}}
   </section>
 {{end}}
+
+{{define "clash"}}{{if .Busy}}Booked · {{.When}}{{else}}{{if .EventID}}<a href="/events/{{.EventID}}">{{.Title}}</a>{{else}}{{.Title}}{{end}} ({{.When}}{{with .Source}}, {{.}}{{end}}){{end}}{{end}}

@@ -138,6 +138,17 @@ func (s *Server) routes() http.Handler {
 	admin("POST /admin/access/{sub}", s.handleSSOAccessUpdate) // SSO only
 	admin("GET /admin/settings", s.handleSettings)
 	admin("POST /admin/settings", s.handleSettingsUpdate)
+	admin("GET /admin/connections", s.handleConnections)
+	admin("GET /admin/connections/calendar/status", s.handleCalendarStatus)
+	admin("POST /admin/connections/calendar/backfill", s.handleCalendarBackfill)
+	admin("POST /admin/connections/sso", s.handleSSOSave)
+	admin("POST /admin/connections/sso/test", s.handleSSOCheck)
+	admin("POST /admin/connections/sso/signin-test", s.handleSSOTestSignIn)
+	admin("POST /admin/connections/sso/discard", s.handleSSODiscard)
+	admin("POST /admin/connections/sso/off", s.handleSSOOff)
+	admin("POST /admin/connections/{name}", s.handleConnectionSave)
+	admin("POST /admin/connections/{name}/test", s.handleConnectionTest)
+	admin("POST /admin/connections/{name}/keep", s.handleConnectionKeep)
 	admin("GET /admin/backup", s.handleBackup)
 	s.apiRoutes(mux, admin) // API tokens, /api/v1/ and /calendar.ics
 
@@ -195,7 +206,7 @@ func (r *statusRecorder) Unwrap() http.ResponseWriter { return r.ResponseWriter 
 func (s *Server) securityHeaders(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		h := w.Header()
-		h.Set("Content-Security-Policy", s.csp)
+		h.Set("Content-Security-Policy", s.contentSecurityPolicy(r))
 		h.Set("X-Content-Type-Options", "nosniff")
 		h.Set("X-Frame-Options", "DENY")
 		h.Set("Referrer-Policy", "same-origin")

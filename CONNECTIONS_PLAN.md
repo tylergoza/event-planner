@@ -10,7 +10,7 @@ This file holds the design for all the apps. The event planner builds it
 first; the others copy it. Their checklists are in their own
 `CONNECTIONS_PLAN.md` (and in `../calendar/PLAN.md`).
 
-Status: planned, nothing built yet (2026-10-11).
+Status: built in the event planner (2026-10-12); the other apps copy it.
 
 ## What's already there
 
@@ -152,29 +152,29 @@ by saving:
 ## Steps (event planner: the reference build)
 
 ### 1. Settings plumbing
-- [ ] `internal/secrets`: key file load-or-create, `Seal`/`Open`, `enc:v1:` format; tests (round trip, wrong key, plain value passes through)
-- [ ] `store.Setting` / `SetSetting` gain `SecretSetting` / `SetSecretSetting`; plain `tracker_token` encrypted on start
-- [ ] A small connection type: fields, env names, setting keys, `Source()` (env / settings / off), `Resolve()`; one table for all three connections
-- [ ] Tests: whole-connection rule (one env var set → all from env), blank secret keeps the old one, **Remove** clears it
+- [x] `internal/secrets`: key file load-or-create, `Seal`/`Open`, `enc:v1:` format; tests (round trip, wrong key, plain value passes through)
+- [x] `store.Setting` / `SetSetting` gain `SecretSetting` / `SetSecretSetting`; plain `tracker_token` encrypted on start
+- [x] A small connection type: fields, env names, setting keys, `Source()` (env / settings / off), `Resolve()`; one table for all three connections
+- [x] Tests: whole-connection rule (one env var set → all from env), blank secret keeps the old one, **Remove** clears it
 
 ### 2. Connections page with the tracker
-- [ ] `/admin/connections` with the tracker section (moved from Settings; old form redirects)
-- [ ] **Test**, **Keep in settings**, "settings differ" warning, last changed by/when
-- [ ] README: a **Connections** section describing environment vs settings and the hand-over steps
+- [x] `/admin/connections` with the tracker section (moved from Settings; old form redirects)
+- [x] **Test**, **Keep in settings**, "settings differ" warning, last changed by/when
+- [x] README: a **Connections** section describing environment vs settings and the hand-over steps
 
 ### 3. Single sign-on
-- [ ] SSO client behind `atomic.Pointer`; rebuilt on change
-- [ ] Pending values, **Test sign-in** round trip, admin-role check, then live
-- [ ] Turn off with confirm
-- [ ] Saved-but-broken SSO falls back to local login with an admin banner; env-broken still fails at start
-- [ ] `event-planner connection clear sso|tracker|calendar`
-- [ ] Tests: pending doesn't change sign-in; test as a non-admin is refused; clear command works with SSO on
+- [x] SSO client behind `atomic.Pointer`; rebuilt on change
+- [x] Pending values, **Test sign-in** round trip, admin-role check, then live
+- [x] Turn off with confirm
+- [x] Saved-but-broken SSO falls back to local login with an admin banner; env-broken still fails at start
+- [x] `event-planner connection clear sso|tracker|calendar`
+- [x] Tests: pending doesn't change sign-in; test as a non-admin is refused; clear command works with SSO on
 
 ### 4. Calendar
-- [ ] Calendar connection in the same table (when `CALENDAR_PLAN.md` step 1 is built, build it this way instead of env-only)
-- [ ] Backfill status and button in its section
+- [x] Calendar connection in the same table (when `CALENDAR_PLAN.md` step 1 is built, build it this way instead of env-only)
+- [x] Backfill status and button in its section
 
 ### 5. Ansible
-- [ ] Every connection variable in `vars.yml` optional, documented as "leave blank to manage in the app"
-- [ ] Backup task includes `secrets.key`
-- [ ] README deploy section: first deploy with vars, **Keep in settings**, blank vars, redeploy
+- [x] Every connection variable in `vars.yml` optional, documented as "leave blank to manage in the app"
+- [x] Backup task includes `secrets.key`
+- [x] README deploy section: first deploy with vars, **Keep in settings**, blank vars, redeploy

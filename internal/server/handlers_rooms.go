@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/tylergoza/event-planner/internal/store"
@@ -18,6 +19,7 @@ type roomRow struct {
 	Link      string // the place's page in the tracker
 	Usage     store.RoomUsage
 	Conflicts []store.EventRef
+	Clashes   []clash // from the calendar, when it's set up and answered
 }
 
 func (s *Server) roomRows(e *store.Event, viewer *store.User) ([]roomRow, error) {
@@ -47,6 +49,14 @@ func (s *Server) roomRows(e *store.Event, viewer *store.User) ([]roomRow, error)
 	return rows, nil
 }
 
+func roomsOf(rows []roomRow) []store.Room {
+	out := make([]store.Room, len(rows))
+	for i, r := range rows {
+		out[i] = r.Room
+	}
+	return out
+}
+
 func (s *Server) roomsData(r *http.Request, e *store.Event, data map[string]any) (map[string]any, error) {
 	rows, err := s.roomRows(e, currentUser(r))
 	if err != nil {
@@ -56,6 +66,17 @@ func (s *Server) roomsData(r *http.Request, e *store.Event, data map[string]any)
 	data["Title"] = "Rooms · " + e.Title
 	data["Rooms"] = rows
 	data["TrackerOn"] = t.Configured()
+	if s.Calendar().Configured() && len(rows) > 0 {
+		clashes, err := s.roomClashes(r.Context(), e, roomsOf(rows))
+		if err != nil {
+			data["CalendarDown"] = true // keep the same-app check
+		} else {
+			for i := range rows {
+				rows[i].Conflicts = nil
+				rows[i].Clashes = clashes[strings.ToLower(rows[i].PlaceName)]
+			}
+		}
+	}
 	if _, ok := data["Form"]; !ok {
 		data["Form"] = store.Room{}
 	}

@@ -43,7 +43,7 @@ func TestRoomsTab(t *testing.T) {
 		"site_name": {"Events"}, "username": {"pat"}, "display_name": {"Pat"},
 		"password": {"a long password"}, "password_confirm": {"a long password"},
 	}, 200)
-	c.post("/admin/settings", "/admin/settings", url.Values{"site_name": {"Events"}, "tracker_url": {tr.URL + "/"}, "tracker_token": {"mt_test"}}, 200)
+	c.post("/admin/connections", "/admin/connections/tracker", url.Values{"tracker_url": {tr.URL + "/"}, "tracker_token": {"mt_test"}}, 200)
 	c.post("/events/new", "/events", url.Values{"title": {"Dinner"}, "status": {"planning"}, "starts_on": {"2099-01-01"}}, 200)
 
 	if body := c.get("/events/1/rooms", 200); !strings.Contains(body, "No rooms yet") {
@@ -112,8 +112,8 @@ func TestRoomsTrackerDown(t *testing.T) {
 		"site_name": {"Events"}, "username": {"pat"}, "display_name": {"Pat"},
 		"password": {"a long password"}, "password_confirm": {"a long password"},
 	}, 200)
-	c.post("/admin/settings", "/admin/settings", url.Values{
-		"site_name": {"P"}, "tracker_url": {"http://127.0.0.1:1"}, "tracker_token": {"mt_x"},
+	c.post("/admin/connections", "/admin/connections/tracker", url.Values{
+		"tracker_url": {"http://127.0.0.1:1"}, "tracker_token": {"mt_x"},
 	}, 200)
 	c.post("/events/new", "/events", url.Values{"title": {"Dinner"}, "status": {"planning"}, "starts_on": {"2099-01-01"}}, 200)
 	st.AddRoom(1, 2, "Main › Fellowship Hall")
