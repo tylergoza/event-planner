@@ -132,6 +132,10 @@ func TestPlannerPermissions(t *testing.T) {
 	// Admin-only.
 	pat.get("/admin/users", 403)
 	pat.get("/admin/settings", 403)
+	pat.get("/admin/connections", 403)
+	pat.post("/events/1", "/admin/connections/calendar", url.Values{"calendar_url": {"https://x.example.org"}}, 403)
+	pat.post("/events/1", "/admin/connections/calendar/test", url.Values{}, 403)
+	pat.post("/events/1", "/admin/connections/calendar/keep", url.Values{}, 403)
 	pat.get("/admin/backup", 403)
 	pat.post("/events/1/edit", "/events/1", url.Values{"title": {"Fall Dinner"}, "status": {"planning"}, "starts_on": {"2099-01-01"}, "access": {"locked"}}, 403)
 	pat.post("/events/new", "/events", url.Values{"title": {"Secret"}, "status": {"planning"}, "starts_on": {"2099-01-01"}, "access": {"locked"}}, 403)

@@ -42,6 +42,7 @@
           {{if .User.IsAdmin}}
             <a href="/admin/users" {{if eq .Path "/admin/users"}}aria-current="page"{{end}}>Users</a>
             <a href="/admin/tokens" {{if eq .Path "/admin/tokens"}}aria-current="page"{{end}}>API tokens</a>
+            <a href="/admin/connections" {{if eq .Path "/admin/connections"}}aria-current="page"{{end}}>Connections</a>
             <a href="/admin/settings" {{if eq .Path "/admin/settings"}}aria-current="page"{{end}}>Settings</a>
           {{end}}
         {{end}}
@@ -67,6 +68,7 @@
   </div>
 
   <main id="main" class="container">
+    {{template "sso-banner" .SSOBroken}}
     {{with .Flash}}
       <div class="flash flash--{{.Kind}}" role="status" data-controller="flash" data-flash-timeout-value="6000">
         <span>{{.Message}}</span>

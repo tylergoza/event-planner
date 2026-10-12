@@ -25,6 +25,7 @@ func (s *Server) TopUpSeries() (int, error) {
 	}
 	if n > 0 {
 		s.log.Info("extended repeating events", "created", n)
+		s.KickCalendar()
 	}
 	return n, nil
 }

@@ -52,22 +52,24 @@ ssh_sources: [0.0.0.0/0, "::/0"]
 # Church time zone: decides what "today", "upcoming" and "overdue" mean.
 tz: America/Chicago
 
-# The maintenance tracker to read products, items and supplies from.
-# Leave both empty to set them in the app under Settings instead. When set
-# here they're fixed: Settings shows them but can't change them. Make the
-# token in the tracker under API ("Event planner") and pass it in the
-# environment so it never lands in a file:
-#   export EP_TRACKER_TOKEN=mt_...
+# Connections (maintenance tracker, single sign-on, calendar). Each one can be
+# left blank to manage it in the app on /admin/connections instead. A value set
+# here is fixed: the app shows it but can't change it. Secrets come from the
+# Keychain through with-ep / with-um (README: Deploying), never from a file.
+#
+# The maintenance tracker to read products, items and supplies from. Make the
+# token in the tracker under API ("Event planner"); with-ep passes it in as
+# EP_TRACKER_TOKEN.
 tracker_url: ""
 tracker_token: "{{ lookup('env', 'EP_TRACKER_TOKEN') }}"
 
-# Single sign-on through User Management. Empty sso_url keeps the event planner's
-# own password login. To turn SSO on, set sso_url and base_url in vars.yml,
-# pass the client secret in the environment, and redeploy:
-#   export UM_EVENTS_SECRET=...   # printed by User Management's import-users playbook
-# To turn it back off, unset sso_url and redeploy. If User Management breaks
-# while SSO is on, `local-login on` on the droplet is the break-glass (README:
-# Single sign-on).
+# Single sign-on through User Management. Empty sso_url keeps the event
+# planner's own password login (or whatever is set on /admin/connections).
+# To turn SSO on here, set sso_url and base_url in vars.yml and deploy through
+# with-um, which passes the client secret (UM_EVENTS_SECRET, printed by User
+# Management's import-users playbook). To turn it back off, unset sso_url and
+# redeploy. If User Management breaks while SSO is on, `local-login on` on the
+# droplet is the break-glass (README: Single sign-on).
 sso_url: ""
 # User Management for server-to-server calls; it runs on port 8100 of the
 # shared droplet.
@@ -79,6 +81,16 @@ sso_client_secret: "{{ lookup('env', 'UM_EVENTS_SECRET') }}"
 # match what's registered in User Management. Required when sso_url is set.
 base_url: ""
 
+# The church calendar (../calendar) that event dates and rooms are sent to.
+# Leave blank to manage it on /admin/connections. calendar_url is its public
+# address. calendar_internal_url is for server-to-server calls; on the shared
+# droplet the calendar listens on http://127.0.0.1:8120, so use that there.
+# calendar_token is a source token (cal_...) made in the calendar; with-ep
+# passes it in as EP_CALENDAR_TOKEN (Keychain item event-planner-calendar).
+calendar_url: ""
+calendar_internal_url: ""
+calendar_token: "{{ lookup('env', 'EP_CALENDAR_TOKEN') }}"
+
 # The first deploy to an empty database creates this admin before the app
 # starts, so /setup is never open. Leave EP_ADMIN_PASSWORD unset to get a
 # random password printed at the end of the run. Skipped when sso_url is set:
@@ -86,8 +98,8 @@ base_url: ""
 admin_username: admin
 admin_password: "{{ lookup('env', 'EP_ADMIN_PASSWORD') }}"
 
-# Deploys back up the database before installing a changed binary, and keep
-# this many of those backups.
+# Deploys back up the database (and secrets.key, which the saved tokens need)
+# before installing a changed binary, and keep this many of those backups.
 keep_backups: 10
 # `make test` runs before every build; -e skip_tests=true skips it.
 skip_tests: false

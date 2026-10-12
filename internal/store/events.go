@@ -38,6 +38,9 @@ type Event struct {
 	// Locked events are only for their members (and admins).
 	Locked     bool
 	CopiedFrom int64 // the event this was copied from, 0 if none
+	// CalendarReplaces is the calendar booking this event takes over on its
+	// first push; 0 once sent (or if none).
+	CalendarReplaces int64
 	// SeriesID is the repeating series this is an occurrence of, 0 if none.
 	// OccurrenceDate is the date the series' rule gave it (it stays even if
 	// the event is moved to another day); "" when not in a series.
@@ -92,12 +95,12 @@ func (e Event) When() string {
 }
 
 const eventCols = `id, title, kind, status, starts_on, start_time, ends_on, end_time, coordinator, COALESCE(expected_count, 0),
-	description, notes, locked, COALESCE(copied_from, 0), visibility, public_description, COALESCE(series_id, 0), occurrence_date, created_at, updated_at`
+	description, notes, locked, COALESCE(copied_from, 0), visibility, public_description, COALESCE(series_id, 0), occurrence_date, COALESCE(calendar_replaces, 0), created_at, updated_at`
 
 func scanEvent(sc interface{ Scan(...any) error }) (Event, error) {
 	var e Event
 	err := sc.Scan(&e.ID, &e.Title, &e.Kind, &e.Status, &e.StartsOn, &e.StartTime, &e.EndsOn, &e.EndTime, &e.Coordinator,
-		&e.ExpectedCount, &e.Description, &e.Notes, &e.Locked, &e.CopiedFrom, &e.Visibility, &e.PublicDescription, &e.SeriesID, &e.OccurrenceDate, &e.CreatedAt, &e.UpdatedAt)
+		&e.ExpectedCount, &e.Description, &e.Notes, &e.Locked, &e.CopiedFrom, &e.Visibility, &e.PublicDescription, &e.SeriesID, &e.OccurrenceDate, &e.CalendarReplaces, &e.CreatedAt, &e.UpdatedAt)
 	return e, err
 }
 
@@ -115,9 +118,9 @@ func (s *Store) CreateEvent(e *Event) (int64, error) {
 	}
 	e.Visibility = NormalizeVisibility(e.Visibility)
 	res, err := s.DB.Exec(`INSERT INTO events (title, kind, status, starts_on, start_time, ends_on, end_time, coordinator, expected_count,
-		description, notes, locked, copied_from, visibility, public_description) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		description, notes, locked, copied_from, visibility, public_description, calendar_replaces) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		e.Title, e.Kind, e.Status, e.StartsOn, e.StartTime, e.EndsOn, e.EndTime, e.Coordinator, nullInt(int64(e.ExpectedCount)),
-		e.Description, e.Notes, e.Locked, nullInt(e.CopiedFrom), e.Visibility, e.PublicDescription)
+		e.Description, e.Notes, e.Locked, nullInt(e.CopiedFrom), e.Visibility, e.PublicDescription, nullInt(e.CalendarReplaces))
 	if err != nil {
 		return 0, err
 	}
@@ -141,6 +144,13 @@ func (s *Store) UpdateEvent(e *Event) error {
 		coordinator = ?, expected_count = ?, description = ?, notes = ?, locked = ?, visibility = ?, public_description = ?, updated_at = datetime('now') WHERE id = ?`,
 		e.Title, e.Kind, e.Status, e.StartsOn, e.StartTime, e.EndsOn, e.EndTime, e.Coordinator, nullInt(int64(e.ExpectedCount)),
 		e.Description, e.Notes, e.Locked, e.Visibility, e.PublicDescription, e.ID)
+	return err
+}
+
+// ClearCalendarReplaces forgets the booking an event took over, once the
+// calendar has it. Queues nothing: the column isn't one the 004 trigger watches.
+func (s *Store) ClearCalendarReplaces(id int64) error {
+	_, err := s.DB.Exec(`UPDATE events SET calendar_replaces = NULL WHERE id = ?`, id)
 	return err
 }
 

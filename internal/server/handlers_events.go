@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"slices"
 	"strconv"
+	"strings"
 
 	"github.com/tylergoza/event-planner/internal/recur"
 	"github.com/tylergoza/event-planner/internal/store"
@@ -158,7 +159,49 @@ func (s *Server) eventFormWith(w http.ResponseWriter, r *http.Request, status in
 }
 
 func (s *Server) handleEventNew(w http.ResponseWriter, r *http.Request) {
-	s.eventForm(w, r, http.StatusOK, store.Event{Status: "planning", StartsOn: s.today()}, nil, nil)
+	e := store.Event{Status: "planning", StartsOn: s.today()}
+	q := r.URL.Query()
+	extra := map[string]any{}
+	// "Make this an event" from the church calendar: fill what it sent,
+	// ignoring anything that doesn't look right.
+	if id, err := strconv.ParseInt(q.Get("from_calendar"), 10, 64); err == nil && id > 0 {
+		extra["FromCalendar"] = id
+		if t := strings.TrimSpace(q.Get("title")); len(t) <= 200 {
+			e.Title = t
+		}
+		if d := q.Get("starts_on"); validDate(d) {
+			e.StartsOn = d
+		}
+		if d := q.Get("ends_on"); validDate(d) && d >= e.StartsOn {
+			e.EndsOn = d
+		}
+		if t := q.Get("start_time"); validTime(t) {
+			e.StartTime = t
+		}
+		if t := q.Get("end_time"); validTime(t) {
+			e.EndTime = t
+		}
+		if rooms := splitRooms(q.Get("rooms")); len(rooms) > 0 {
+			extra["CalendarRooms"] = strings.Join(rooms, ",")
+			extra["CalendarRoomList"] = strings.Join(rooms, ", ")
+		}
+	}
+	s.eventFormWith(w, r, http.StatusOK, e, nil, nil, extra)
+}
+
+// splitRooms is the room names in a comma-separated list, without blanks
+// or repeats.
+func splitRooms(v string) []string {
+	var out []string
+	seen := map[string]bool{}
+	for _, n := range strings.Split(v, ",") {
+		n = strings.TrimSpace(n)
+		if k := strings.ToLower(n); n != "" && len(n) <= 100 && !seen[k] {
+			seen[k] = true
+			out = append(out, n)
+		}
+	}
+	return out
 }
 
 // readEvent reads the form into e and returns who's on its member list.
@@ -227,6 +270,15 @@ func (s *Server) handleEventCreate(w http.ResponseWriter, r *http.Request) {
 	}
 	var e store.Event
 	members, errs := readEvent(r, &e)
+	extra := map[string]any{}
+	if id, err := strconv.ParseInt(formStr(r, "from_calendar"), 10, 64); err == nil && id > 0 {
+		e.CalendarReplaces = id
+		extra["FromCalendar"] = id
+	}
+	if rooms := splitRooms(formStr(r, "calendar_rooms")); len(rooms) > 0 {
+		extra["CalendarRooms"] = strings.Join(rooms, ",")
+		extra["CalendarRoomList"] = strings.Join(rooms, ", ")
+	}
 	rf, rule, repeats, rerrs := readRepeat(r, e.StartsOn)
 	if repeats && rerrs == nil {
 		// A new series starts on the pattern's first date, so a start of
@@ -237,13 +289,20 @@ func (s *Server) handleEventCreate(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if errs = append(errs, rerrs...); errs != nil {
-		s.eventFormWith(w, r, http.StatusUnprocessableEntity, e, members, errs, map[string]any{"Repeat": rf})
+		extra["Repeat"] = rf
+		s.eventFormWith(w, r, http.StatusUnprocessableEntity, e, members, errs, extra)
 		return
 	}
 	id, err := s.store.CreateEvent(&e)
 	if err != nil {
 		s.serverError(w, r, err)
 		return
+	}
+	for _, name := range splitRooms(formStr(r, "calendar_rooms")) {
+		if _, err := s.store.AddRoom(id, 0, name); err != nil {
+			s.serverError(w, r, err)
+			return
+		}
 	}
 	if e.Locked && currentUser(r).IsAdmin() {
 		if err := s.store.SetMembers(id, members); err != nil {
@@ -320,9 +379,14 @@ func (s *Server) handleEventShow(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
+	var calClashes []clash
+	if s.Calendar().Configured() {
+		calClashes = s.storedClashes(e)
+	}
 	s.eventPage(w, r, http.StatusOK, "events/show", e, "overview", map[string]any{
 		"Sum": sum, "Upcoming": upcoming, "Attention": attention, "Today": s.today(), "Live": true,
 		"RoomCount": len(rooms), "RoomConflicts": len(conflicts), "Helpers": tally, "CopiedFrom": copiedFrom,
+		"CalendarClashes": calClashes,
 	})
 }
 

@@ -129,12 +129,12 @@ func TestEndToEnd(t *testing.T) {
 	}, 200)
 
 	// Connect the tracker; saving checks it answers.
-	if body := c.post("/admin/settings", "/admin/settings", url.Values{
-		"site_name": {"Grace Church Events"}, "tracker_url": {tracker.URL + "/"}, "tracker_token": {"mt_test"},
+	if body := c.post("/admin/connections", "/admin/connections/tracker", url.Values{
+		"tracker_url": {tracker.URL + "/"}, "tracker_token": {"mt_test"},
 	}, 200); !strings.Contains(body, "Connected to the maintenance tracker") {
 		t.Fatal("expected the tracker check to pass")
 	}
-	if body := c.post("/admin/settings", "/admin/settings", url.Values{"site_name": {"X"}, "tracker_token": {"nope"}}, 422); !strings.Contains(body, "start with mt_") {
+	if body := c.post("/admin/connections", "/admin/connections/tracker", url.Values{"tracker_token": {"nope"}}, 422); !strings.Contains(body, "start with mt_") {
 		t.Error("expected token format error")
 	}
 
@@ -279,7 +279,7 @@ func TestEndToEnd(t *testing.T) {
 		"/events/1/needs", "/events/1/needs?q=chairs", "/needs/1/edit", "/events/1/rooms", "/events/1/rooms?print=1", "/events/1/helpers",
 		"/events/1/people", "/events/1/people?print=1", "/events/1/copy", "/events/2/people", "/events/2/people?print=1", "/events/2/copy",
 		"/events/2", "/events/2/schedule", "/events/2/tasks", "/events/2/tasks?print=1", "/events/2/needs", "/events/2/rooms", "/events/2/helpers",
-		"/account", "/admin/users", "/admin/users/new", "/admin/users/1/edit", "/admin/settings", "/offline",
+		"/account", "/admin/users", "/admin/users/new", "/admin/users/1/edit", "/admin/settings", "/admin/connections", "/offline",
 		"/calendar", "/calendar?month=2099-11", "/calendar?month=2099-12&room=Nowhere", "/calendar?month=bogus",
 		"/series/1", "/events/3", "/events/4", "/events/4/edit", "/events/4/schedule", "/events/4/match-later",
 		"/events/4/match-later?section=tasks&section=rooms", "/events/4/end-series", "/events/4/repeat",
@@ -309,10 +309,10 @@ func TestTrackerDown(t *testing.T) {
 	c.post("/setup", "/setup", url.Values{
 		"site_name": {"P"}, "username": {"coordinator"}, "password": {"a long password"}, "password_confirm": {"a long password"},
 	}, 200)
-	if body := c.post("/admin/settings", "/admin/settings", url.Values{
-		"site_name": {"P"}, "tracker_url": {"http://127.0.0.1:1"}, "tracker_token": {"mt_x"},
-	}, 200); !strings.Contains(body, "didn&#39;t answer") {
-		t.Fatal("expected a warning that the tracker didn't answer")
+	if body := c.post("/admin/connections", "/admin/connections/tracker", url.Values{
+		"tracker_url": {"http://127.0.0.1:1"}, "tracker_token": {"mt_x"},
+	}, 200); !strings.Contains(body, "Can&#39;t reach http://127.0.0.1:1") {
+		t.Fatal("expected a warning that the tracker couldn't be reached")
 	}
 	c.post("/events/new", "/events", url.Values{"title": {"Dinner"}, "status": {"planning"}, "starts_on": {"2099-11-01"}}, 200)
 	st.CreateNeed(&store.Need{EventID: 1, Name: "Chairs", Quantity: 5, TrackerKind: "product", TrackerID: 9})

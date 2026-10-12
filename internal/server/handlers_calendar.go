@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/tylergoza/event-planner/internal/calendar"
 	"github.com/tylergoza/event-planner/internal/store"
 )
 
@@ -46,7 +47,23 @@ func (s *Server) handleHome(w http.ResponseWriter, r *http.Request) {
 		s.handleDashboard(w, r)
 		return
 	}
+	if s.calendarRedirect(w, r, func(c *calendar.Client) string { return c.PublicURL + "/calendar" }) {
+		return
+	}
 	s.handleCalendar(w, r)
+}
+
+// calendarRedirect sends the visitor to the church calendar app when it is
+// configured (CALENDAR_PLAN.md step 5), with 302 so the app can be taken
+// out again. It returns false, and writes nothing, when the calendar isn't
+// set, so this app works alone.
+func (s *Server) calendarRedirect(w http.ResponseWriter, r *http.Request, to func(*calendar.Client) string) bool {
+	c := s.Calendar()
+	if !c.Configured() {
+		return false
+	}
+	http.Redirect(w, r, to(c), http.StatusFound)
+	return true
 }
 
 // calItem is one entry on one day.
@@ -65,6 +82,14 @@ type calDay struct {
 }
 
 func (s *Server) handleCalendar(w http.ResponseWriter, r *http.Request) {
+	if s.calendarRedirect(w, r, func(c *calendar.Client) string {
+		if r.URL.RawQuery != "" {
+			return c.PublicURL + "/calendar?" + r.URL.RawQuery
+		}
+		return c.PublicURL + "/calendar"
+	}) {
+		return
+	}
 	today := s.today()
 	month, err := time.Parse("2006-01", r.URL.Query().Get("month"))
 	if err != nil {
@@ -163,6 +188,9 @@ func (s *Server) handleCalendar(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleCalendarEvent(w http.ResponseWriter, r *http.Request) {
+	if id := pathID(r); id > 0 && s.calendarRedirect(w, r, func(c *calendar.Client) string { return c.BookingURL(id) }) {
+		return
+	}
 	c, err := s.store.CalendarEvent(pathID(r), s.calAccess(r))
 	if errors.Is(err, store.ErrNotFound) {
 		s.notFoundFor(w, r)

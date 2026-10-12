@@ -44,7 +44,7 @@ Management (8100) can run alongside it.
 | Helpers | Jobs with slots, when and room. Sign up a user, or a typed name with a phone number. **Sign me up** for yourself. Each job shows full, short or over. |
 | People | "Who's doing what": each person's tasks and helper jobs, plus tasks nobody has and jobs still short. Prints. |
 | Offline | Installable as an app. The dashboard and an event's overview open from the last copy when there's no signal. |
-| Users and access | Three roles: Helper, Planner and Admin (see [Roles](#roles)). Admins manage users, settings, backups and API tokens, and can lock an event to a list of people. Locked events are busy-only to everyone else. Admins see every event. |
+| Users and access | Three roles: Helper, Planner and Admin (see [Roles](#roles)). Admins manage users, settings, connections, backups and API tokens, and can lock an event to a list of people. Locked events are busy-only to everyone else. Admins see every event. |
 
 ## Roles
 
@@ -58,7 +58,7 @@ ones before it.
 | Sign up for helper jobs (for self, or a typed name) | ✓ | ✓ | ✓ |
 | Create, edit, copy and delete events | | ✓ | ✓ |
 | Manage the schedule, rooms and helper jobs | | ✓ | ✓ |
-| Manage users, settings, backups and API tokens | | | ✓ |
+| Manage users, settings, connections, backups and API tokens | | | ✓ |
 | Lock an event to a list of people, and see every locked event | | | ✓ |
 
 With single sign-on the role comes from User Management: `admin`, `planner`
@@ -90,6 +90,9 @@ month and a room. Signed-in people see the same pages with the details
 described above and links to each event's internal page.
 
 - `/` shows the calendar to visitors who aren't signed in.
+- When the church calendar is connected, `/calendar`, `/calendar/{id}`,
+  `/calendar.ics` and signed-out `/` redirect (302) to it. The events API
+  is unchanged, and without a calendar everything here works as before.
 - **Subscribe** on the calendar page gives `webcal://…/calendar.ics`. The
   feed is public and covers 90 days from today by default. `from` and `to`
   work as they do in the [API](#the-events-api). It's cached for 5 minutes.
@@ -166,6 +169,29 @@ read a token out of a page's code, so in a browser on another site only use a
 token without private access. Fetch private events from your server, and
 keep that token secret.
 
+## Connections
+
+Links to other apps (the maintenance tracker, the church calendar) are set
+by an admin on **Connections** (`/admin/connections`). Each section shows
+where the connection comes from, who last changed it and when, and has a
+**Test** button that says in plain words whether it works. **Save** tests
+too, and saves even if the test fails, so you can set up an app that isn't
+running yet.
+
+- **Environment or settings.** A connection comes from the server's
+  environment variables when any of them is set, otherwise from the
+  settings saved here, otherwise it's off. It is always one or the other
+  as a whole, never mixed. When it's set on the server the fields are
+  read-only.
+- **Secrets** (tokens) are encrypted in the database with a key in
+  `secrets.key` next to it, and are never shown again (only "set, ends
+  …a1b2"). Keep `secrets.key` with your backups: without it a restored
+  database can't read its saved secrets and they must be entered again.
+- **Handing over from the server to the app:** deploy with the variables
+  set, press **Keep in settings** on Connections (the row then says the
+  settings match, so it's safe to remove), blank the variables in
+  `vars.yml`, and redeploy. From then on admins manage it in the app.
+
 ## The maintenance tracker
 
 The event planner only **reads** from the tracker, through its API (`/api/v1/`):
@@ -173,7 +199,7 @@ products, items, supplies and places.
 
 1. In the tracker, an admin opens **API**, makes a token named
    "Event planner" and copies it (`mt_…`).
-2. In the event planner, an admin opens **Settings**, enters the tracker's
+2. In the event planner, an admin opens **Connections**, enters the tracker's
    address and the token, and saves. Saving checks the connection.
 
 Answers are cached for a minute. If the tracker can't be reached, pages
@@ -194,7 +220,8 @@ Set with a flag or an environment variable. Flags go **before** any command.
 | `TZ` | | system | Church time zone: decides what "today", "upcoming" and "overdue" mean |
 | `TRUST_PROXY=1` | `-trust-proxy` | off | Trust `X-Forwarded-For/Proto` from a reverse proxy. Only when a proxy is the only way in. |
 | `DEV=1` | `-dev` | off | Load templates/static from `./web` on disk |
-| `TRACKER_URL`, `TRACKER_TOKEN` | | | The maintenance tracker connection. When set, they override Settings and can't be changed there. |
+| `TRACKER_URL`, `TRACKER_TOKEN` | | | The maintenance tracker connection. If either is set, the whole connection comes from the server: saved settings are ignored for it and Connections can't change it. |
+| `CALENDAR_URL`, `CALENDAR_INTERNAL_URL`, `CALENDAR_TOKEN` | | | The church calendar (`../calendar`): its public address, an optional server-to-server address (e.g. `http://127.0.0.1:8120`) and a source token (`cal_…`) made there. Set, every event date and its rooms are sent to it (see `CALENDAR_PLAN.md`). Same whole-connection rule as the tracker. Unset, nothing changes. |
 | `SSO_URL` | | | User Management's public address (e.g. `https://accounts.example.org`). Set it to sign in there instead of with local passwords; empty keeps the local login. |
 | `SSO_INTERNAL_URL` | | `SSO_URL` | User Management for server-to-server calls, e.g. `http://127.0.0.1:8100` on the shared droplet |
 | `SSO_CLIENT_ID`, `SSO_CLIENT_SECRET` | | | From registering this app in User Management (shown once). Required when `SSO_URL` is set; the app won't start without them. |
@@ -233,6 +260,36 @@ Management (the `user_management` repo) instead of a password here:
    their last good check, so restarting it signs no one out.
 4. Signing out here also signs out of User Management, and so of the
    other apps within 5 minutes.
+
+**Setting it up (or changing it) on the Connections page.** Single sign-on
+can also be saved in the app instead of `SSO_URL` and friends. A wrong
+setting could lock every admin out, so saving never switches it on:
+
+1. Admin › Connections › Single sign-on: fill in the User Management
+   address, optional internal address, client ID, client secret and this
+   app's address, and **Save**. The values are stored as *pending* (the
+   secret encrypted) and sign-in doesn't change. A blank secret keeps the
+   current one.
+2. Press **Test sign-in**. The app first checks the client ID and secret
+   with User Management server to server, then sends you through User
+   Management and back. Only if that works **and** you come back as an
+   `admin` of this app does the pending set become live; your local
+   account is linked to your church account like the first rollout does.
+   Otherwise the page says why (for example "you signed in as X, who isn't
+   an admin of this app in User Management"), the old setting stays and the
+   pending values wait. You stay signed in here either way. **Discard**
+   drops the pending values.
+3. **Turn off single sign-on** (after a confirm) goes back to local
+   passwords. Anyone who only ever signed in through User Management has
+   none; set one with `event-planner reset-password USERNAME`.
+4. Values set in the environment are shown read-only; **Keep in settings**
+   copies them over, as for the other connections.
+
+Break-glass if a bad saved setting still gets in the way:
+`event-planner local-login on` brings the password form back, and
+`event-planner connection clear sso` removes the saved settings, pending
+ones included. A broken saved setting falls back to local login with a
+banner for admins; broken environment values still stop the app at start.
 
 `/setup` is gone and `/account` links to User Management's account page.
 Event members and other permissions stay in this app.
@@ -313,7 +370,9 @@ tracker's tag (`maintenance-tracker`) and adds itself alongside, on port
 Provision adds the DNS record for `app_domain` (pointing at the same droplet)
 and the service user; with no tagged droplet it would create one. Deploy
 runs the tests, builds the Linux binary here, backs up the database when the
-binary changes (keeping 10), installs, and checks `/healthz`.
+binary changes (keeping 10 sets: the database and `secrets.key` together, as
+`pre-deploy-<time>.db` and `.key` in the backup folder), installs, and checks
+`/healthz`.
 
 Caddy's config is split so both apps can deploy without overwriting each
 other: `/etc/caddy/Caddyfile` only imports `/etc/caddy/sites/*.caddy`, and
@@ -336,10 +395,24 @@ On the first deploy the admin user is created before the app starts, so
 a random one is printed at the end. With `sso_url` set there's no local admin
 to create: people come from User Management.
 
-To fix the tracker connection at deploy time instead of in Settings, set
-`tracker_url` in `vars.yml`, make an API token in the tracker named "Event
-planner", save it in the Keychain as `event-planner`, and add `with-ep`:
-`with-do with-um with-ep make deploy`.
+The maintenance tracker and the church calendar connections are optional.
+Leave each blank in `vars.yml` to manage it in the app on `/admin/connections`.
+To set one in `vars.yml` instead, fill in its address and let `with-ep` pass
+the token from the Keychain: `tracker_url` with `event-planner` (the tracker's
+"Event planner" API token, `EP_TRACKER_TOKEN`), or `calendar_url` with
+`event-planner-calendar` (the calendar's source token, `EP_CALENDAR_TOKEN`).
+On the shared droplet set `calendar_internal_url` to `http://127.0.0.1:8120`.
+
+First deploy with connections in `vars.yml`:
+
+1. `with-do with-um with-ep make deploy`.
+2. Sign in, open **/admin/connections**, and press **Keep in settings** for each connection set in `vars.yml`. The app saves it (tokens are encrypted with `secrets.key`).
+3. Blank those values in `vars.yml` and redeploy. The app keeps its saved settings.
+4. With the calendar set, press **Send all events to the calendar** on `/admin/connections` once. It sends every event from a year back on; pressing it again is safe.
+
+Backups include `secrets.key`, which the saved tokens need, so restore both
+files together. Neither playbook touches `secrets.key`. If it's deleted, the app
+makes a new one and the saved tokens have to be entered again.
 
 #### Turning on single sign-on
 
@@ -366,7 +439,9 @@ README (`ssh_private_key_file` in `vars.yml`; the same key works for both).
 
 **Settings → Backup** (or the `backup` command), stop the app on the new host,
 copy the file to its database path (`/var/lib/event-planner/events.db`, owned
-by `events`), and start it. Droplet backups cover both apps when they share
+by `events`), and start it. Saved tokens are encrypted with `secrets.key`, kept
+next to the database: copy it along too, or enter those tokens again after the
+move. Droplet backups cover both apps when they share
 a droplet.
 
 ## Layout

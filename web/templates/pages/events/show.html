@@ -1,5 +1,9 @@
 {{define "content"}}
 {{$e := .E}}{{$sum := .Sum}}
+{{if .CalendarClashes}}
+<div class="alert alert--error" role="alert">The calendar shows these at the same time in the same rooms:
+  {{range $i, $c := .CalendarClashes}}{{if $i}}; {{end}}{{template "clash" $c}}{{with $c.Rooms}} in {{.}}{{end}}{{end}}.</div>
+{{end}}
 {{with .CopiedFrom}}<p class="muted small">Copied from <a href="/events/{{.ID}}">{{.Title}}</a></p>{{end}}
 <div class="stat-grid">
   <a class="stat" href="/events/{{$e.ID}}/schedule">

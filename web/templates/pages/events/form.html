@@ -6,6 +6,14 @@
   <form method="post" action="{{if .Form.ID}}/events/{{.Form.ID}}{{else}}/events{{end}}" class="form"
         data-controller="reveal" data-action="change->reveal#update">
     {{template "csrf" .CSRF}}
+    {{if and .FromCalendar (not .Form.ID)}}
+    <input type="hidden" name="from_calendar" value="{{.FromCalendar}}">
+    <p class="hint">This event will take over calendar booking #{{.FromCalendar}}.</p>
+    {{if .CalendarRooms}}
+    <input type="hidden" name="calendar_rooms" value="{{.CalendarRooms}}">
+    <p class="hint">Rooms from the calendar: {{.CalendarRoomList}}. They'll be added.</p>
+    {{end}}
+    {{end}}
     <div class="field">
       <label for="title">Title</label>
       <input id="title" name="title" value="{{.Form.Title}}" required maxlength="200" {{if not .Form.ID}}autofocus{{end}}>

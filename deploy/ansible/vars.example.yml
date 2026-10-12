@@ -34,13 +34,24 @@ droplet_name: maintenance-tracker
 
 # tz: America/Chicago
 
-# The maintenance tracker (token from EP_TRACKER_TOKEN in the environment).
-# Or leave unset and connect it in the app under Settings.
+# Connections are optional. Leave each blank to manage it in the app on
+# /admin/connections; a value here is fixed in the app. Tokens and secrets come
+# from the Keychain through with-ep / with-um (README: Deploying).
+
+# The maintenance tracker (token from EP_TRACKER_TOKEN, via with-ep).
+# Leave blank to manage it on /admin/connections.
 # tracker_url: https://maintenance.example.org
 
-# Single sign-on through User Management (secret from UM_EVENTS_SECRET in
-# the environment). SSO is the expected setup; remove sso_url and redeploy to
-# fall back to the event planner's own local login. Break-glass if User
-# Management is down: `local-login on` on the droplet (README: Single sign-on).
+# The church calendar (token from EP_CALENDAR_TOKEN, via with-ep). Leave blank
+# to manage it on /admin/connections. On the shared droplet the internal
+# address is the calendar on localhost.
+# calendar_url: https://calendar.example.org
+# calendar_internal_url: http://127.0.0.1:8120
+
+# Single sign-on through User Management (secret from UM_EVENTS_SECRET, via
+# with-um). Leave sso_url blank to manage SSO on /admin/connections. Setting
+# it here means SSO is the expected setup; remove sso_url and redeploy to fall
+# back to the event planner's own local login. Break-glass if User Management
+# is down: `local-login on` on the droplet (README: Single sign-on).
 sso_url: https://accounts.example.org
 base_url: https://events.example.org   # sign-in returns to base_url/auth/callback

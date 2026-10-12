@@ -12,6 +12,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/tylergoza/event-planner/internal/calendar"
 	"github.com/tylergoza/event-planner/internal/store"
 )
 
@@ -226,6 +227,9 @@ func (s *Server) apiICS(w http.ResponseWriter, r *http.Request, tok *store.APITo
 
 // publicICS is the no-token feed: what an anonymous visitor sees.
 func (s *Server) publicICS(w http.ResponseWriter, r *http.Request) {
+	if s.calendarRedirect(w, r, func(c *calendar.Client) string { return c.PublicURL + "/calendar.ics" }) {
+		return
+	}
 	w.Header().Set("Cache-Control", "public, max-age=300")
 	s.writeICS(w, r, store.CalendarPublic)
 }

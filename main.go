@@ -5,6 +5,8 @@
 //	                                    create a user (prompts for password)
 //	event-planner reset-password NAME   set a new password for a user
 //	event-planner local-login on|off    break-glass: password sign-in even with SSO_URL set
+//	event-planner connection clear sso|tracker|calendar
+//	                                    break-glass: delete a saved connection's settings
 //	event-planner backup FILE           write a consistent copy of the database
 //	event-planner seed-demo             add a sample event to try the app out
 //
@@ -74,12 +76,13 @@ func main() {
 		return
 	}
 
+	connEnv := map[string]string{}
+	for _, k := range server.ConnectionEnv() {
+		connEnv[k] = os.Getenv(k)
+	}
 	srv, err := server.New(server.Config{
 		Dev: *dev, TrustProxy: *trustProxy,
-		TrackerURL: os.Getenv("TRACKER_URL"), TrackerToken: os.Getenv("TRACKER_TOKEN"),
-		BaseURL: env("BASE_URL", ""),
-		SSOURL:  env("SSO_URL", ""), SSOInternalURL: env("SSO_INTERNAL_URL", ""),
-		SSOClientID: env("SSO_CLIENT_ID", ""), SSOClientSecret: env("SSO_CLIENT_SECRET", ""),
+		Env: connEnv,
 	}, st, logger)
 	if err != nil {
 		logger.Error("init server", "err", err)
@@ -128,6 +131,13 @@ func main() {
 		}
 	}()
 
+	// Send changed events to the church calendar, when one is set up.
+	calendarDone := make(chan struct{})
+	go func() {
+		srv.RunCalendarWorker(ctx)
+		close(calendarDone)
+	}()
+
 	go func() {
 		logger.Info("listening", "addr", *addr, "db", *dbPath, "dev", *dev, "tz", time.Local.String())
 		if err := httpSrv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
@@ -141,6 +151,10 @@ func main() {
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	httpSrv.Shutdown(shutdownCtx)
+	select {
+	case <-calendarDone:
+	case <-shutdownCtx.Done():
+	}
 }
 
 var commandUsage = map[string]string{
@@ -149,6 +163,29 @@ var commandUsage = map[string]string{
 	"local-login":    "local-login on|off",
 	"backup":         "backup DEST_FILE",
 	"seed-demo":      "seed-demo",
+	"connection":     "connection clear sso|tracker|calendar",
+}
+
+// commandNames lists the commands for the unknown-command error.
+const commandNames = "create-user, reset-password, local-login, connection, backup, seed-demo"
+
+// connectionSettings are the saved settings each connection keeps in the
+// database. prefix, when set, also clears every key starting with it.
+var connectionSettings = map[string]struct {
+	keys   []string
+	prefix string
+}{
+	"tracker": {keys: []string{"tracker_url", "tracker_token"}},
+	"sso": {keys: []string{"sso_url", "sso_internal_url", "sso_client_id", "sso_client_secret", "base_url"},
+		prefix: "sso_pending_"},
+	"calendar": {keys: []string{"calendar_url", "calendar_internal_url", "calendar_token"}},
+}
+
+// connectionKeys returns every setting key to delete for a connection,
+// including the record of who last changed it.
+func connectionKeys(name string) []string {
+	c := connectionSettings[name]
+	return append(slices.Clone(c.keys), "conn_"+name+"_changed_by", "conn_"+name+"_changed_at")
 }
 
 // checkCommand validates a command line before anything touches the
@@ -159,9 +196,18 @@ func checkCommand(args []string) error {
 	}
 	usage, ok := commandUsage[args[0]]
 	if !ok {
-		return fmt.Errorf("unknown command %q (commands: create-user, reset-password, local-login, backup, seed-demo)", args[0])
+		return fmt.Errorf("unknown command %q (commands: %s)", args[0], commandNames)
 	}
 	rest := args[1:]
+	if args[0] == "connection" {
+		if len(args) != 3 || args[1] != "clear" {
+			return errors.New("usage: " + usage)
+		}
+		if _, ok := connectionSettings[args[2]]; !ok {
+			return fmt.Errorf("unknown connection %q (use sso, tracker or calendar). usage: %s", args[2], usage)
+		}
+		return nil
+	}
 	if args[0] == "create-user" {
 		if _, rest2, err := parseCreateUser(rest); err != nil {
 			return fmt.Errorf("%w (usage: %s)", err, usage)
@@ -234,6 +280,19 @@ func runCommand(st *store.Store, args []string) error {
 		} else {
 			fmt.Println("Local login is off: with SSO_URL set, /login goes to User Management.")
 		}
+	case "connection":
+		// Break-glass for a bad saved connection setting that locks people
+		// out. Deletes the saved values; env vars on the server still apply.
+		name := args[2]
+		removed, err := st.ClearConnection(connectionKeys(name), connectionSettings[name].prefix)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("Cleared the saved %s connection (%d settings). If %s_* is set on the server, that still applies.\n",
+			name, removed, strings.ToUpper(name))
+		if name == "sso" {
+			fmt.Println("Sign-in falls back to local passwords unless SSO_URL is set on the server; use reset-password if needed.")
+		}
 	case "backup":
 		if _, err := os.Stat(args[1]); err == nil {
 			return fmt.Errorf("%s already exists", args[1])
@@ -248,7 +307,7 @@ func runCommand(st *store.Store, args []string) error {
 		}
 		fmt.Println("Demo event added.")
 	default:
-		return fmt.Errorf("unknown command %q (commands: create-user, reset-password, local-login, backup, seed-demo)", args[0])
+		return fmt.Errorf("unknown command %q (commands: %s)", args[0], commandNames)
 	}
 	return nil
 }
