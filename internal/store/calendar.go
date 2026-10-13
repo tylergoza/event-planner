@@ -39,6 +39,7 @@ type CalendarEntry struct {
 	StartTime         string // HH:MM, "" for all day
 	EndsOn            string // "" for a one-day event
 	EndTime           string
+	Tentative         bool     // the date is pencilled in; shown even on busy entries
 	Rooms             []string // room names, in the event's order
 	PublicDescription string   // only on full entries
 	Public            bool     // the event's visibility is public (full entries only)
@@ -54,12 +55,12 @@ func (c CalendarEntry) LastDate() string {
 
 const calendarSelect = `
 	SELECT e.id, e.title, e.kind, e.status, e.starts_on, e.start_time, e.ends_on, e.end_time,
-	       e.visibility, e.public_description, e.locked, %s
+	       e.visibility, e.public_description, e.locked, e.date_tentative, %s
 	FROM events e
-	WHERE e.status <> 'cancelled' AND %s
+	WHERE e.status <> 'cancelled' AND e.starts_on <> '' AND %s
 	ORDER BY e.starts_on, e.start_time, e.id`
 
-// Calendar lists the non-cancelled events that fall on any day from..to
+// Calendar lists the non-cancelled, scheduled events that fall on any day from..to
 // (YYYY-MM-DD, both inclusive), ordered by date then time. A multi-day event
 // is included if any of its days is in the range. What each entry shows
 // depends on access:
@@ -74,7 +75,8 @@ func (s *Store) Calendar(from, to string, access CalendarAccess) ([]CalendarEntr
 }
 
 // CalendarEvent returns one event the access may see in full, or
-// ErrNotFound if it doesn't exist, is cancelled, or would only show as busy.
+// ErrNotFound if it doesn't exist, is cancelled, isn't scheduled yet, or
+// would only show as busy.
 func (s *Store) CalendarEvent(id int64, access CalendarAccess) (*CalendarEntry, error) {
 	list, err := s.calendar(`e.id = ?`, []any{id}, access)
 	if err != nil {
@@ -111,7 +113,7 @@ func (s *Store) calendar(where string, args []any, access CalendarAccess) ([]Cal
 			title, kind, status     string
 		)
 		if err := rows.Scan(&id, &title, &kind, &status, &c.StartsOn, &c.StartTime, &c.EndsOn, &c.EndTime,
-			&visibility, &description, &locked, &seen); err != nil {
+			&visibility, &description, &locked, &c.Tentative, &seen); err != nil {
 			return nil, err
 		}
 		full := false

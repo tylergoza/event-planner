@@ -574,6 +574,7 @@ type DetailsChange struct {
 	Description, PublicDescription, Visibility   *string
 	Notes                                        *string
 	ExpectedCount                                *int
+	DateTentative                                *bool // pencilled in or confirmed
 }
 
 // ApplyDetailsForward applies the changed fields to this occurrence and every
@@ -607,6 +608,10 @@ func (s *Store) ApplyDetailsForward(eventID int64, c DetailsChange, by string) (
 	if c.ExpectedCount != nil {
 		sets = append(sets, "expected_count = ?")
 		args = append(args, nullInt(int64(*c.ExpectedCount)))
+	}
+	if c.DateTentative != nil {
+		sets = append(sets, "date_tentative = ?")
+		args = append(args, *c.DateTentative)
 	}
 
 	tx, err := s.DB.Begin()

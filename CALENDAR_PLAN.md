@@ -41,9 +41,12 @@ alone. Don't delete any of that.
 - What's sent: title, kind, dates and times, rooms (`place_id` + name),
   public description, `url` to `/events/{id}`, `visibility`
   (`locked` when locked, else `public`/`private`), `status`
-  (`cancelled` when cancelled, else `confirmed`). For locked events send
+  (`cancelled` when cancelled, `tentative` when pencilled in
+  (`date_tentative = 1`), else `confirmed`). For locked events send
   **no title, kind or description**. Never send notes, tasks, helpers or
   needs.
+- An event not scheduled yet (`starts_on = ''`) is never sent. If it had been
+  sent before, the outbox gets a `delete`.
 - Done events stay (they happened). Cancelled ones are sent as cancelled.
 
 ## Steps

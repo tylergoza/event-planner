@@ -17,13 +17,18 @@ var eventStatusLabels = map[string]string{
 func EventStatusLabel(s string) string { return eventStatusLabels[s] }
 
 // Event is a dinner, work day, fellowship, meeting... Dates are YYYY-MM-DD,
-// times HH:MM ("" for all day). EndsOn "" means a one-day event.
+// times HH:MM ("" for all day). EndsOn "" means a one-day event. StartsOn
+// "" means it isn't scheduled yet (BOOKING_PLAN.md): it has no date, and
+// stays out of the calendar, feeds and room clash checks.
 type Event struct {
-	ID            int64
-	Title         string
-	Kind          string
-	Status        string
-	StartsOn      string
+	ID       int64
+	Title    string
+	Kind     string
+	Status   string
+	StartsOn string
+	// DateTentative is set while the date is pencilled in: held, not
+	// certain. The calendar gets it as "tentative".
+	DateTentative bool
 	StartTime     string
 	EndsOn        string
 	EndTime       string
@@ -50,6 +55,9 @@ type Event struct {
 	UpdatedAt      string
 }
 
+// Scheduled reports whether the event has a date yet.
+func (e Event) Scheduled() bool { return e.StartsOn != "" }
+
 // Active reports whether the event is still being worked on.
 func (e Event) Active() bool { return e.Status != "done" && e.Status != "cancelled" }
 
@@ -70,6 +78,9 @@ func fmtClock(t string) string {
 
 // When is the date and time for display, e.g. "Sat, Nov 1, 2026 · 6:00 PM – 8:00 PM".
 func (e Event) When() string {
+	if !e.Scheduled() {
+		return "Not scheduled yet"
+	}
 	d, err := time.Parse(DateLayout, e.StartsOn)
 	if err != nil {
 		return e.StartsOn
@@ -94,12 +105,12 @@ func (e Event) When() string {
 	return out
 }
 
-const eventCols = `id, title, kind, status, starts_on, start_time, ends_on, end_time, coordinator, COALESCE(expected_count, 0),
+const eventCols = `id, title, kind, status, starts_on, date_tentative, start_time, ends_on, end_time, coordinator, COALESCE(expected_count, 0),
 	description, notes, locked, COALESCE(copied_from, 0), visibility, public_description, COALESCE(series_id, 0), occurrence_date, COALESCE(calendar_replaces, 0), created_at, updated_at`
 
 func scanEvent(sc interface{ Scan(...any) error }) (Event, error) {
 	var e Event
-	err := sc.Scan(&e.ID, &e.Title, &e.Kind, &e.Status, &e.StartsOn, &e.StartTime, &e.EndsOn, &e.EndTime, &e.Coordinator,
+	err := sc.Scan(&e.ID, &e.Title, &e.Kind, &e.Status, &e.StartsOn, &e.DateTentative, &e.StartTime, &e.EndsOn, &e.EndTime, &e.Coordinator,
 		&e.ExpectedCount, &e.Description, &e.Notes, &e.Locked, &e.CopiedFrom, &e.Visibility, &e.PublicDescription, &e.SeriesID, &e.OccurrenceDate, &e.CalendarReplaces, &e.CreatedAt, &e.UpdatedAt)
 	return e, err
 }
@@ -117,9 +128,9 @@ func (s *Store) CreateEvent(e *Event) (int64, error) {
 		e.Status = "planning"
 	}
 	e.Visibility = NormalizeVisibility(e.Visibility)
-	res, err := s.DB.Exec(`INSERT INTO events (title, kind, status, starts_on, start_time, ends_on, end_time, coordinator, expected_count,
-		description, notes, locked, copied_from, visibility, public_description, calendar_replaces) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		e.Title, e.Kind, e.Status, e.StartsOn, e.StartTime, e.EndsOn, e.EndTime, e.Coordinator, nullInt(int64(e.ExpectedCount)),
+	res, err := s.DB.Exec(`INSERT INTO events (title, kind, status, starts_on, date_tentative, start_time, ends_on, end_time, coordinator, expected_count,
+		description, notes, locked, copied_from, visibility, public_description, calendar_replaces) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		e.Title, e.Kind, e.Status, e.StartsOn, e.DateTentative, e.StartTime, e.EndsOn, e.EndTime, e.Coordinator, nullInt(int64(e.ExpectedCount)),
 		e.Description, e.Notes, e.Locked, nullInt(e.CopiedFrom), e.Visibility, e.PublicDescription, nullInt(e.CalendarReplaces))
 	if err != nil {
 		return 0, err
@@ -140,9 +151,9 @@ func NormalizeVisibility(v string) string {
 
 func (s *Store) UpdateEvent(e *Event) error {
 	e.Visibility = NormalizeVisibility(e.Visibility)
-	_, err := s.DB.Exec(`UPDATE events SET title = ?, kind = ?, status = ?, starts_on = ?, start_time = ?, ends_on = ?, end_time = ?,
+	_, err := s.DB.Exec(`UPDATE events SET title = ?, kind = ?, status = ?, starts_on = ?, date_tentative = ?, start_time = ?, ends_on = ?, end_time = ?,
 		coordinator = ?, expected_count = ?, description = ?, notes = ?, locked = ?, visibility = ?, public_description = ?, updated_at = datetime('now') WHERE id = ?`,
-		e.Title, e.Kind, e.Status, e.StartsOn, e.StartTime, e.EndsOn, e.EndTime, e.Coordinator, nullInt(int64(e.ExpectedCount)),
+		e.Title, e.Kind, e.Status, e.StartsOn, e.DateTentative, e.StartTime, e.EndsOn, e.EndTime, e.Coordinator, nullInt(int64(e.ExpectedCount)),
 		e.Description, e.Notes, e.Locked, e.Visibility, e.PublicDescription, e.ID)
 	return err
 }
@@ -151,6 +162,13 @@ func (s *Store) UpdateEvent(e *Event) error {
 // calendar has it. Queues nothing: the column isn't one the 004 trigger watches.
 func (s *Store) ClearCalendarReplaces(id int64) error {
 	_, err := s.DB.Exec(`UPDATE events SET calendar_replaces = NULL WHERE id = ?`, id)
+	return err
+}
+
+// ConfirmDate clears an event's pencilled-in mark. The 007 trigger queues
+// the change for the calendar.
+func (s *Store) ConfirmDate(id int64) error {
+	_, err := s.DB.Exec(`UPDATE events SET date_tentative = 0, updated_at = datetime('now') WHERE id = ? AND date_tentative = 1`, id)
 	return err
 }
 
@@ -299,17 +317,37 @@ func (s *Store) summarize(sum *EventSummary, today string) error {
 		Scan(&sum.Tasks.Done, &sum.Tasks.Total, &sum.Overdue, &sum.NeedsHelp, &sum.Needs.Done, &sum.Needs.Total)
 }
 
-// sortSummaries puts active events first, soonest first, then the
-// finished ones, newest first.
+// sortSummaries puts active events first: the ones not scheduled yet
+// (newest first), then soonest first. Then the finished ones, newest first
+// (any with no date last).
 func sortSummaries(list []EventSummary) {
 	sort.SliceStable(list, func(i, j int) bool {
 		a, b := list[i], list[j]
 		if a.Active() != b.Active() {
 			return a.Active()
 		}
-		if a.Active() {
-			return a.StartsOn < b.StartsOn
+		if !a.Active() {
+			return a.StartsOn > b.StartsOn
 		}
-		return a.StartsOn > b.StartsOn
+		if a.Scheduled() != b.Scheduled() {
+			return !a.Scheduled()
+		}
+		if !a.Scheduled() {
+			return a.ID > b.ID
+		}
+		return a.StartsOn < b.StartsOn
 	})
+}
+
+// Unscheduled is the active events in list with no date yet, and the
+// rest, each in list's order.
+func Unscheduled(list []EventSummary) (undated, dated []EventSummary) {
+	for _, e := range list {
+		if e.Scheduled() || !e.Active() {
+			dated = append(dated, e)
+		} else {
+			undated = append(undated, e)
+		}
+	}
+	return undated, dated
 }

@@ -110,6 +110,14 @@ func (s *Server) sendCalendarJob(ctx context.Context, c *calendar.Client, j stor
 	if err != nil {
 		return err
 	}
+	if !e.Scheduled() {
+		// No date yet: nothing to hold, and it may have had one before.
+		// A booking it would take over stays until it has a date.
+		if err := c.DeleteBooking(ctx, e.ID); err != nil {
+			return err
+		}
+		return s.store.SetCalendarConflicts(e.ID, "")
+	}
 	b := s.calendarBooking(e, rooms)
 	b.Replaces = e.CalendarReplaces
 	res, err := c.PutBooking(ctx, e.ID, b)
@@ -138,7 +146,9 @@ func (s *Server) sendCalendarJob(ctx context.Context, c *calendar.Client, j stor
 
 // calendarBooking is what the calendar is sent for an event. Never notes,
 // tasks, helpers or needs; for a locked event not even its title, kind or
-// description, only rooms and times.
+// description, only rooms and times. Status is "cancelled" for a cancelled
+// event, "tentative" while its date is pencilled in, else "confirmed".
+// Events not scheduled yet aren't sent (sendCalendarJob deletes them).
 func (s *Server) calendarBooking(e *store.Event, rooms []store.Room) calendar.Booking {
 	b := calendar.Booking{
 		StartsOn: e.StartsOn, StartTime: e.StartTime, EndsOn: e.EndsOn, EndTime: e.EndTime,
@@ -149,8 +159,11 @@ func (s *Server) calendarBooking(e *store.Event, rooms []store.Room) calendar.Bo
 	} else {
 		b.Title, b.Kind, b.Description = e.Title, e.Kind, e.PublicDescription
 	}
-	if e.Status == "cancelled" {
+	switch {
+	case e.Status == "cancelled":
 		b.Status = "cancelled"
+	case e.DateTentative:
+		b.Status = "tentative"
 	}
 	if base := s.configuredBaseURL(); base != "" {
 		b.URL = base + "/events/" + strconv.FormatInt(e.ID, 10)

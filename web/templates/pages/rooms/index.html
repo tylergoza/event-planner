@@ -7,6 +7,7 @@
 
 <div class="two-col two-col--wide-left">
   <section>
+    {{if not $e.Scheduled}}<p class="muted small">Not scheduled yet: these rooms aren't held anywhere until it has a date.</p>{{end}}
     {{if .CalendarDown}}<p class="muted small">Couldn't reach the calendar, so only this app's events were checked.</p>{{end}}
     {{if .Rooms}}
     <ul class="room-list">

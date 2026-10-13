@@ -133,6 +133,7 @@ type apiEventJSON struct {
 	StartTime   string   `json:"start_time"`
 	EndsOn      string   `json:"ends_on"`
 	EndTime     string   `json:"end_time"`
+	Tentative   bool     `json:"tentative"` // the date is pencilled in, not confirmed
 	Rooms       []string `json:"rooms"`
 	Description string   `json:"description,omitempty"`
 	Public      bool     `json:"public"`
@@ -142,7 +143,7 @@ type apiEventJSON struct {
 func (s *Server) apiEventJSON(r *http.Request, c store.CalendarEntry) apiEventJSON {
 	e := apiEventJSON{
 		ID: c.EventID, Busy: c.Busy, Title: c.Title, Kind: c.Kind, Status: c.Status,
-		StartsOn: c.StartsOn, StartTime: c.StartTime, EndsOn: c.EndsOn, EndTime: c.EndTime,
+		StartsOn: c.StartsOn, StartTime: c.StartTime, EndsOn: c.EndsOn, EndTime: c.EndTime, Tentative: c.Tentative,
 		Rooms: c.Rooms, Description: c.PublicDescription, Public: c.Public,
 	}
 	if e.Rooms == nil {
@@ -274,6 +275,9 @@ func buildICS(calName, host, baseURL string, list []store.CalendarEntry, now tim
 		}
 		line("DTSTAMP:" + stamp)
 		icsTimes(line, c)
+		if c.Tentative {
+			line("STATUS:TENTATIVE")
+		}
 		if c.Busy {
 			if len(c.Rooms) > 0 {
 				line("SUMMARY:" + escapeICS("Busy: "+strings.Join(c.Rooms, ", ")))

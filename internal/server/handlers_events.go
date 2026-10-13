@@ -73,7 +73,8 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, r, err)
 		return
 	}
-	s.render(w, r, http.StatusOK, "dashboard", map[string]any{"Events": list, "MyTasks": mine, "MyJobs": jobs, "Today": s.today(), "Live": true})
+	undated, dated := store.Unscheduled(list)
+	s.render(w, r, http.StatusOK, "dashboard", map[string]any{"Events": dated, "Unscheduled": undated, "MyTasks": mine, "MyJobs": jobs, "Today": s.today(), "Live": true})
 }
 
 // visibleHelperJobs lists the helper jobs u is signed up for, in the
@@ -112,7 +113,8 @@ func (s *Server) handleEvents(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, r, err)
 		return
 	}
-	s.render(w, r, http.StatusOK, "events/index", map[string]any{"Title": "Events", "Events": list})
+	undated, dated := store.Unscheduled(list)
+	s.render(w, r, http.StatusOK, "events/index", map[string]any{"Title": "Events", "Events": dated, "Unscheduled": undated})
 }
 
 func (s *Server) eventForm(w http.ResponseWriter, r *http.Request, status int, e store.Event, members []int64, errs []string) {
@@ -127,6 +129,13 @@ func (s *Server) eventFormWith(w http.ResponseWriter, r *http.Request, status in
 		title = "Edit " + e.Title
 	}
 	data := map[string]any{"Title": title, "Form": e, "Visibilities": store.Visibilities, "Errors": errs, "Statuses": store.EventStatuses, "Apply": "this"}
+	// What was ticked when the form comes back with errors; otherwise
+	// whether the event has a date.
+	if r.Method == http.MethodPost {
+		data["Unscheduled"] = unscheduledForm(r)
+	} else {
+		data["Unscheduled"] = !e.Scheduled()
+	}
 	for k, v := range extra {
 		data[k] = v
 	}
@@ -204,13 +213,22 @@ func splitRooms(v string) []string {
 	return out
 }
 
+// unscheduledForm reports whether the form says the event has no date yet.
+func unscheduledForm(r *http.Request) bool { return formStr(r, "scheduling") == "unscheduled" }
+
 // readEvent reads the form into e and returns who's on its member list.
 // Only admins lock events and pick who's on them; for anyone else e keeps
-// the access it had and the list comes back nil.
+// the access it had and the list comes back nil. "Not scheduled yet"
+// clears the dates (BOOKING_PLAN.md).
 func readEvent(r *http.Request, e *store.Event) ([]int64, []string) {
 	e.Title, e.Kind, e.Status = formStr(r, "title"), formStr(r, "kind"), formStr(r, "status")
 	e.StartsOn, e.StartTime = formStr(r, "starts_on"), formStr(r, "start_time")
 	e.EndsOn, e.EndTime = formStr(r, "ends_on"), formStr(r, "end_time")
+	e.DateTentative = formStr(r, "date_tentative") == "1"
+	unscheduled := unscheduledForm(r)
+	if unscheduled {
+		e.StartsOn, e.EndsOn, e.DateTentative = "", "", false
+	}
 	e.Coordinator, e.Description, e.Notes = formStr(r, "coordinator"), formStr(r, "description"), formStr(r, "notes")
 	e.Visibility, e.PublicDescription = store.NormalizeVisibility(formStr(r, "visibility")), formStr(r, "public_description")
 	var errs []string
@@ -237,7 +255,12 @@ func readEvent(r *http.Request, e *store.Event) ([]int64, []string) {
 	if !slices.Contains(store.EventStatuses, e.Status) {
 		errs = append(errs, "Pick a status.")
 	}
-	if !validDate(e.StartsOn) {
+	switch {
+	case unscheduled && e.SeriesID != 0:
+		errs = append(errs, "A date in a repeating series can't be unscheduled. Skip it instead.")
+	case unscheduled && e.Status == "ready":
+		errs = append(errs, "An event that's Ready needs a date. Pick one, or set it back to Planning.")
+	case !unscheduled && !validDate(e.StartsOn):
 		errs = append(errs, "Pick the day it starts.")
 	}
 	if e.EndsOn != "" && (!validDate(e.EndsOn) || e.EndsOn < e.StartsOn) {
@@ -502,6 +525,24 @@ func (s *Server) handleEventDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.redirect(w, r, "/events", e.Title+" deleted.")
+}
+
+// handleConfirmDate is the event page's one-click "Confirm date": the
+// pencilled-in date becomes the date.
+func (s *Server) handleConfirmDate(w http.ResponseWriter, r *http.Request) {
+	e, ok := s.event(w, r)
+	if !ok {
+		return
+	}
+	if !e.Scheduled() {
+		s.redirect(w, r, eventURL(e.ID, "/edit"), "Pick a date first.")
+		return
+	}
+	if err := s.store.ConfirmDate(e.ID); err != nil {
+		s.serverError(w, r, err)
+		return
+	}
+	s.redirect(w, r, eventURL(e.ID, ""), "Date confirmed: "+e.When()+".")
 }
 
 // handleMove moves a task list up or down its event's lists, then goes

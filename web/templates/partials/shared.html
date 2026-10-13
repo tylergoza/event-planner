@@ -37,6 +37,9 @@
 {{define "repeat-badge"}}{{if .}}<span class="badge badge--repeat" title="Part of a repeating series">↻ Repeats</span>{{end}}{{end}}
 {{define "event-badge"}}<span class="badge badge--event-{{.}}">{{eventStatusLabel .}}</span>{{end}}
 {{define "task-badge"}}<span class="badge badge--task-{{.}}">{{taskStatusLabel .}}</span>{{end}}
+{{/* An event's date is pencilled in. Pass the store.Event. */}}
+{{define "date-badge"}}{{if .DateTentative}}<span class="badge badge--tentative">Pencilled in</span>{{else if not .Scheduled}}<span class="badge badge--unscheduled">No date yet</span>{{end}}{{end}}
+
 {{define "need-badge"}}<span class="badge badge--need-{{.}}">{{needStatusLabel .}}</span>{{end}}
 
 {{/* An event's title and tabs, above each of its pages. Pass the page data. */}}
@@ -45,7 +48,7 @@
   <nav class="crumbs" aria-label="Breadcrumb"><a href="/events">Events</a></nav>
   <div class="page-head event-head">
     <div>
-      <h1>{{$e.Title}} {{template "event-badge" $e.Status}}{{if $e.Locked}} {{template "locked-badge"}}{{end}} {{template "visibility-badge" $e.Visibility}}</h1>
+      <h1>{{$e.Title}} {{template "event-badge" $e.Status}} {{template "date-badge" $e}}{{if $e.Locked}} {{template "locked-badge"}}{{end}} {{template "visibility-badge" $e.Visibility}}</h1>
       <p class="muted">{{$e.When}}{{with $e.Kind}} · {{.}}{{end}}{{with $e.Coordinator}} · Coordinated by {{.}}{{end}}</p>
       {{with .Series}}
       <p class="small series-line"><span class="badge badge--repeat">↻</span> Repeats: {{.Describe}} · <a href="/series/{{.ID}}">All dates</a> · {{.Pos}} of {{.Total}}{{with .Prev}} · <a href="/events/{{.ID}}">← {{fmtDate .OccurrenceDate}}</a>{{end}}{{with .Next}} · <a href="/events/{{.ID}}">{{fmtDate .OccurrenceDate}} →</a>{{end}}{{if $.User.CanPlan}}<br><a href="/events/{{$e.ID}}/match-later">Make later dates like this one</a> · <a href="/events/{{$e.ID}}/repeat">Change the repeat pattern</a> · <a href="/events/{{$e.ID}}/end-series">End the series from here</a>{{end}}</p>
@@ -53,6 +56,7 @@
     </div>
     {{if .User.CanPlan}}
     <div class="page-head__actions">
+      {{if $e.DateTentative}}<form method="post" action="/events/{{$e.ID}}/confirm-date" class="inline-form">{{template "csrf" .CSRF}}<button type="submit" class="btn btn--sm">Confirm date</button></form>{{end}}
       <a class="btn btn--ghost btn--sm" href="/events/{{$e.ID}}/copy">Copy</a>
       <a class="btn btn--ghost btn--sm" href="/events/{{$e.ID}}/edit">Edit details</a>
     </div>
@@ -134,4 +138,4 @@
   </section>
 {{end}}
 
-{{define "clash"}}{{if .Busy}}Booked · {{.When}}{{else}}{{if .EventID}}<a href="/events/{{.EventID}}">{{.Title}}</a>{{else}}{{.Title}}{{end}} ({{.When}}{{with .Source}}, {{.}}{{end}}){{end}}{{end}}
+{{define "clash"}}{{if .Busy}}Booked · {{.When}}{{with .Mark}} ({{.}}){{end}}{{else}}{{if .EventID}}<a href="/events/{{.EventID}}">{{.Title}}</a>{{else}}{{.Title}}{{end}} ({{.When}}{{with .Source}}, {{.}}{{end}}{{with .Mark}}, {{.}}{{end}}){{end}}{{end}}

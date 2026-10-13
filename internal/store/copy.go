@@ -53,15 +53,20 @@ func copyEventTx(tx *sql.Tx, srcID int64, opts CopyOptions) (int64, error) {
 	if err != nil {
 		return 0, notFound(err)
 	}
-	from, err := time.Parse(DateLayout, src.StartsOn)
-	if err != nil {
-		return 0, errors.New("the event's start date isn't a date")
-	}
 	to, err := time.Parse(DateLayout, opts.StartsOn)
 	if err != nil {
 		return 0, errors.New("pick the day the copy starts")
 	}
-	days := int(to.Sub(from).Round(24*time.Hour).Hours() / 24)
+	// An event not scheduled yet has nothing to move its dates from, so
+	// they stay as they are.
+	days := 0
+	if src.Scheduled() {
+		from, err := time.Parse(DateLayout, src.StartsOn)
+		if err != nil {
+			return 0, errors.New("the event's start date isn't a date")
+		}
+		days = int(to.Sub(from).Round(24*time.Hour).Hours() / 24)
+	}
 	title := strings.TrimSpace(opts.Title)
 	if title == "" {
 		title = src.Title

@@ -58,4 +58,5 @@ Ansible), check whether the siblings should get the same change.
   is a subset of the full one, so when the owning app is connected the
   local rows start referencing it (its ID plus a cached name) instead of
   being rebuilt.
+- `starts_on = ''` means not scheduled yet; never sent to the calendar, and left out of the calendar, feeds, API and room clash checks. `date_tentative` = pencilled in, pushed as `tentative`.
 - `BOOKING_PLAN.md`: this app's part of bookable rooms / pending bookings / unscheduled events (design in `../.claude/plans/bookable-rooms-and-pending-bookings.md`). Tick its checkboxes as steps are done.

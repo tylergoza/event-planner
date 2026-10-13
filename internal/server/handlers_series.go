@@ -465,10 +465,15 @@ func detailsChange(old, now store.Event) store.DetailsChange {
 		n := now.ExpectedCount
 		c.ExpectedCount = &n
 	}
+	if old.DateTentative != now.DateTentative {
+		t := now.DateTentative
+		c.DateTentative = &t
+	}
 	return c
 }
 
 func hasChange(c store.DetailsChange) bool {
 	return c.Title != nil || c.Kind != nil || c.StartTime != nil || c.EndTime != nil || c.Coordinator != nil ||
-		c.Description != nil || c.PublicDescription != nil || c.Visibility != nil || c.Notes != nil || c.ExpectedCount != nil
+		c.Description != nil || c.PublicDescription != nil || c.Visibility != nil || c.Notes != nil || c.ExpectedCount != nil ||
+		c.DateTentative != nil
 }

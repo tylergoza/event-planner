@@ -32,7 +32,7 @@
       {{range .}}
         <div class="cal-cell{{if not .InMonth}} cal-cell--out{{end}}{{if .Today}} cal-cell--today{{end}}" role="cell">
           <div class="cal-cell__day">{{.Day}}</div>
-          {{range .Items}}{{template "cal-item" (dict "Busy" .Busy "BusyText" .BusyText "EventID" .EventID "Title" .Title "Kind" .Kind "Rooms" .Rooms "When" .When "User" $.User)}}{{end}}
+          {{range .Items}}{{template "cal-item" (dict "Busy" .Busy "BusyText" .BusyText "EventID" .EventID "Title" .Title "Kind" .Kind "Rooms" .Rooms "When" .When "Tentative" .Tentative "User" $.User)}}{{end}}
         </div>
       {{end}}
     </div>
@@ -43,7 +43,7 @@
   {{range .Agenda}}
     <section class="cal-agenda__day{{if .Today}} cal-agenda__day--today{{end}}">
       <h2>{{fmtDate .Date}}{{if .Today}} <span class="badge">Today</span>{{end}}</h2>
-      {{range .Items}}{{template "cal-item" (dict "Busy" .Busy "BusyText" .BusyText "EventID" .EventID "Title" .Title "Kind" .Kind "Rooms" .Rooms "When" .When "User" $.User)}}{{end}}
+      {{range .Items}}{{template "cal-item" (dict "Busy" .Busy "BusyText" .BusyText "EventID" .EventID "Title" .Title "Kind" .Kind "Rooms" .Rooms "When" .When "Tentative" .Tentative "User" $.User)}}{{end}}
     </section>
   {{else}}
     <p class="muted">Nothing on the calendar this month{{if .Room}} in that room{{end}}.</p>

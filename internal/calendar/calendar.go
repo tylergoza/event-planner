@@ -61,7 +61,7 @@ type Room struct {
 
 // Booking is what's sent for one event. Locked events go with no title,
 // kind or description. Visibility is "public", "private" or "locked";
-// Status "confirmed" or "cancelled".
+// Status "confirmed", "tentative" (a pencilled-in date) or "cancelled".
 type Booking struct {
 	Title       string `json:"title"`
 	Kind        string `json:"kind"`
@@ -92,6 +92,10 @@ type Block struct {
 	EndTime   string   `json:"end_time"`
 	Rooms     []string `json:"rooms"`
 	Busy      bool     `json:"busy"`
+	// Status is "confirmed", "tentative" (pencilled in) or "pending" (a
+	// request waiting for approval); all of them hold the rooms. It may be
+	// missing on busy blocks.
+	Status string `json:"status"`
 }
 
 // Ours reports whether the block is one of this app's events.

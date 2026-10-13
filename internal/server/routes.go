@@ -61,6 +61,7 @@ func (s *Server) routes() http.Handler {
 	plan("GET /events/{id}/edit", s.handleEventEdit)
 	plan("POST /events/{id}", s.handleEventUpdate)
 	plan("POST /events/{id}/delete", s.handleEventDelete)
+	plan("POST /events/{id}/confirm-date", s.handleConfirmDate)
 	plan("GET /events/{id}/copy", s.handleEventCopyForm)
 	plan("POST /events/{id}/copy", s.handleEventCopy)
 	auth("GET /events/{id}/people", s.handlePeople)

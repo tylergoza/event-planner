@@ -8,7 +8,7 @@
 <div class="stat-grid">
   <a class="stat" href="/events/{{$e.ID}}/schedule">
     <span class="stat__label">When</span>
-    <span class="stat__value">{{relDays $e.StartsOn}}</span>
+    <span class="stat__value">{{if $e.Scheduled}}{{relDays $e.StartsOn}}{{else}}No date yet{{end}}</span>
     <span class="stat__sub">{{$e.When}}</span>
   </a>
   <a class="stat" href="/events/{{$e.ID}}/tasks">

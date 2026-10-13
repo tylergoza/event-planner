@@ -4,7 +4,7 @@
   <h1>{{.C.Title}}</h1>
   {{if .C.Kind}}<p class="muted">{{.C.Kind}}</p>{{end}}
   <dl class="cal-event__facts">
-    <dt>When</dt><dd>{{.When}}</dd>
+    <dt>When</dt><dd>{{.When}}{{if .C.Tentative}} <span class="cal-mark">Pencilled in</span>{{end}}</dd>
     {{if .C.Rooms}}<dt>Where</dt><dd>{{range $i, $r := .C.Rooms}}{{if $i}}, {{end}}{{$r}}{{end}}</dd>{{end}}
   </dl>
   {{if .C.PublicDescription}}<p class="cal-desc">{{.C.PublicDescription}}</p>{{end}}
