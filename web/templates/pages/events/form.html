@@ -34,6 +34,17 @@
         </select>
       </div>
     </div>
+    {{if not .Form.SeriesID}}
+    <fieldset class="fieldset">
+      <legend>Date</legend>
+      <div class="segmented">
+        <label><input type="radio" name="scheduling" value="dated" {{if not .Unscheduled}}checked{{end}}> Has a date</label>
+        <label><input type="radio" name="scheduling" value="unscheduled" {{if .Unscheduled}}checked{{end}}> Not scheduled yet</label>
+      </div>
+      <p class="hint">Not scheduled yet: plan it now and pick the day later. It stays off the calendar, and its rooms aren't held, until it has a date.</p>
+    </fieldset>
+    {{end}}
+    {{if not .Form.SeriesID}}<div data-reveal-target="section" data-reveal-when="scheduling=dated">{{end}}
     <div class="field-row">
       <div class="field"><label for="starts_on">Starts</label><input id="starts_on" name="starts_on" type="date" value="{{.Form.StartsOn}}" required></div>
       <div class="field"><label for="start_time">At <span class="optional">optional</span></label><input id="start_time" name="start_time" type="time" value="{{.Form.StartTime}}"></div>
@@ -42,6 +53,12 @@
       <div class="field"><label for="ends_on">Ends <span class="optional">optional, if more than a day</span></label><input id="ends_on" name="ends_on" type="date" value="{{.Form.EndsOn}}"></div>
       <div class="field"><label for="end_time">At <span class="optional">optional</span></label><input id="end_time" name="end_time" type="time" value="{{.Form.EndTime}}"></div>
     </div>
+    <label class="check"><input type="checkbox" name="date_tentative" value="1" {{if .Form.DateTentative}}checked{{end}}> Date pencilled in (not confirmed yet)</label>
+    <p class="hint">Holds the rooms on the calendar, marked "Pencilled in". Untick it to confirm the date.</p>
+    {{if not .Form.SeriesID}}
+    {{template "repeat-fields" .Repeat}}
+    </div>
+    {{end}}
     {{if .Form.SeriesID}}
     <fieldset class="fieldset">
       <legend>Apply changes to</legend>
@@ -49,10 +66,8 @@
         <label><input type="radio" name="apply" value="this" required {{if ne .Apply "later"}}checked{{end}}> Just this date</label>
         <label><input type="radio" name="apply" value="later" required {{if eq .Apply "later"}}checked{{end}}> This and later dates</label>
       </div>
-      <p class="hint">"This and later" copies the details you changed (title, kind, times, coordinator, headcount, descriptions, visibility, notes) to the dates after this one. Status, access and the day itself stay per date. This date repeats from {{fmtDate .Form.OccurrenceDate}}. <a href="/events/{{.Form.ID}}/repeat">Change the repeat pattern from this date</a></p>
+      <p class="hint">"This and later" copies the details you changed (title, kind, times, pencilled in or not, coordinator, headcount, descriptions, visibility, notes) to the dates after this one. Status, access and the day itself stay per date. This date repeats from {{fmtDate .Form.OccurrenceDate}}. <a href="/events/{{.Form.ID}}/repeat">Change the repeat pattern from this date</a></p>
     </fieldset>
-    {{else}}
-    {{template "repeat-fields" .Repeat}}
     {{end}}
     <div class="field-row">
       <div class="field">

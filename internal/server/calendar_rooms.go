@@ -72,7 +72,8 @@ func blockSpan(b calendar.Block) span {
 
 // clash is one calendar booking shown as a warning.
 type clash struct {
-	Busy    bool // someone else's private booking: no title
+	Busy    bool   // someone else's private booking: no title
+	Mark    string // "Pencilled in" or "Pending"; "" when confirmed
 	Title   string
 	Source  string // "Production planner", "Calendar"; empty for our own
 	EventID int64  // one of our own events, linked
@@ -138,8 +139,20 @@ func sourceLabel(src string) string {
 	return "Calendar"
 }
 
+// statusMark is the label for a booking that holds its rooms but isn't
+// confirmed. Both count as busy all the same.
+func statusMark(status string) string {
+	switch status {
+	case "tentative":
+		return "Pencilled in"
+	case "pending":
+		return "Pending"
+	}
+	return ""
+}
+
 func newClash(b calendar.Block, showDate bool) clash {
-	c := clash{Busy: b.Busy, When: blockWhen(b, showDate), Rooms: strings.Join(b.Rooms, ", ")}
+	c := clash{Busy: b.Busy, Mark: statusMark(b.Status), When: blockWhen(b, showDate), Rooms: strings.Join(b.Rooms, ", ")}
 	if b.Busy {
 		return c
 	}

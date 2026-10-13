@@ -230,7 +230,7 @@ type EventRef struct {
 // RoomConflicts maps each of the event's tracker rooms to the other live
 // (not cancelled or done) events that use the same place on overlapping
 // dates, counting only events viewer can see. Rooms typed in by hand never
-// conflict.
+// conflict, and neither do events not scheduled yet.
 func (s *Store) RoomConflicts(eventID int64, viewer *User) (map[int64][]EventRef, error) {
 	cond, args := visibleTo(viewer)
 	q := `SELECT mine.id, e.id, e.title, e.kind, e.status, e.starts_on, e.start_time, e.ends_on, e.end_time, e.coordinator, COALESCE(e.expected_count, 0),
@@ -241,6 +241,7 @@ func (s *Store) RoomConflicts(eventID int64, viewer *User) (map[int64][]EventRef
 		JOIN events e ON e.id = o.event_id
 		WHERE mine.event_id = ? AND mine.place_id IS NOT NULL
 		  AND e.status NOT IN ('done', 'cancelled')
+		  AND e.starts_on <> '' AND me.starts_on <> ''
 		  AND e.starts_on <= COALESCE(NULLIF(me.ends_on, ''), me.starts_on)
 		  AND COALESCE(NULLIF(e.ends_on, ''), e.starts_on) >= me.starts_on
 		  AND ` + cond + `

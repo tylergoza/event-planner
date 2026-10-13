@@ -12,7 +12,7 @@
     <div class="field">
       <label for="starts_on">New start date</label>
       <input id="starts_on" name="starts_on" type="date" value="{{.Form.starts_on}}" required autofocus>
-      <p class="hint">It started {{.E.StartsOn | fmtDate}}.</p>
+      <p class="hint">{{if .E.Scheduled}}It started {{.E.StartsOn | fmtDate}}.{{else}}It isn't scheduled yet, so dates in it are copied as they are.{{end}}</p>
     </div>
     <label class="check"><input type="checkbox" name="assignees" value="1" {{if .Form.assignees}}checked{{end}}> Keep who's on each task</label>
     <label class="check"><input type="checkbox" name="helpers" value="1" {{if .Form.helpers}}checked{{end}}> Keep helpers signed up</label>

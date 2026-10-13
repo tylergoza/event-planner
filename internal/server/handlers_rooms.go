@@ -66,7 +66,8 @@ func (s *Server) roomsData(r *http.Request, e *store.Event, data map[string]any)
 	data["Title"] = "Rooms · " + e.Title
 	data["Rooms"] = rows
 	data["TrackerOn"] = t.Configured()
-	if s.Calendar().Configured() && len(rows) > 0 {
+	// An event with no date holds nothing yet, so there's nothing to clash with.
+	if s.Calendar().Configured() && len(rows) > 0 && e.Scheduled() {
 		clashes, err := s.roomClashes(r.Context(), e, roomsOf(rows))
 		if err != nil {
 			data["CalendarDown"] = true // keep the same-app check

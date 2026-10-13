@@ -296,6 +296,9 @@ func newCalItem(e store.CalendarEntry, ds string) calItem {
 		} else {
 			it.BusyText = who + " · " + it.When
 		}
+		if e.Tentative {
+			it.BusyText += ", pencilled in"
+		}
 	}
 	return it
 }

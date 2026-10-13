@@ -273,6 +273,8 @@ details > summary { cursor: pointer; color: var(--muted); }
 .badge--task-done, .badge--need-gathered, .badge--event-ready { background: var(--upcoming-bg); color: var(--upcoming); }
 .badge--event-planning { background: var(--accent-bg); color: var(--primary); }
 .badge--public { background: var(--upcoming-bg); color: var(--upcoming); }
+.badge--tentative { background: var(--due-soon-bg); color: var(--due-soon); border: 1px dashed currentColor; }
+.badge--unscheduled { background: var(--surface-2); color: var(--muted); }
 .badge--locked { background: var(--surface-2); color: var(--text); border: 1px solid var(--border); }
 h1 .badge { vertical-align: middle; font-size: .8rem; }
 .text-alert { color: var(--overdue); }
@@ -525,6 +527,12 @@ select:disabled { opacity: .6; }
 .cal-item__title { font-weight: 600; }
 .cal-item__kind, .cal-item__rooms, .cal-item__inside { display: block; }
 .cal-item--busy { color: var(--muted); font-style: italic; padding-left: 6px; border-left: 3px solid var(--border); }
+/* A pencilled-in date: held, not confirmed. Hatched, as on the church calendar. */
+.cal-item--tentative {
+  padding: 2px 6px; border-left: 3px dashed var(--muted); border-radius: 4px;
+  background: repeating-linear-gradient(135deg, transparent 0 6px, color-mix(in srgb, var(--muted) 14%, transparent) 6px 12px);
+}
+.cal-mark { font-size: .75rem; font-weight: 600; text-transform: uppercase; letter-spacing: .03em; color: var(--muted); }
 .cal-agenda__day { margin-bottom: 18px; }
 .cal-agenda__day h2 { font-size: 1.05rem; margin: 0 0 6px; padding-bottom: 4px; border-bottom: 1px solid var(--border); }
 .cal-agenda .cal-item { font-size: 1rem; }

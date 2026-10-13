@@ -107,6 +107,22 @@ Locked events are always busy outside the app, even when public. Notes,
 tasks, helpers and needs are never shown outside the app, whatever the
 visibility.
 
+## Event stages
+
+An event goes through three stages before it happens. This is separate from
+its work status (Planning, Ready, Done, Cancelled).
+
+| Stage | Date | On the calendar and API |
+|-------|------|-------------------------|
+| **Not scheduled yet** | None | Left out. If it was sent before, it's removed |
+| **Pencilled in** | A date we're holding but not sure of | Sent as tentative: holds its rooms, shown as "Pencilled in" |
+| **Scheduled** | Confirmed | Sent as confirmed |
+
+Pick **Confirm date** on the event page to move a pencilled-in event to
+scheduled. A Ready event needs a date, so the dashboard warns when one is
+still pencilled in. The room picker lists every tracker room, and rooms on an
+event that isn't scheduled yet are only held once it has a date.
+
 ## Public calendar
 
 Anyone can open `/calendar`. `/calendar?month=YYYY-MM&room=Name` picks the
@@ -163,12 +179,17 @@ Each entry has these fields. A full entry:
   "start_time": "17:30",
   "ends_on": "",
   "end_time": "20:00",
+  "tentative": false,
   "rooms": ["Lifecenter", "Kitchen"],
   "description": "Potluck dinner for everyone. Bring a dish to share.",
   "public": true,
   "url": "https://events.example.org/calendar/12"
 }
 ```
+
+`tentative` is `true` for a pencilled-in date and `false` once it's scheduled
+(see [Event stages](#event-stages)). Events not scheduled yet are left out.
+In the `.ics` feeds a pencilled-in event is `STATUS:TENTATIVE`.
 
 A busy entry has no `id`, `title`, `kind`, `status`, `description` or `url`:
 
@@ -179,6 +200,7 @@ A busy entry has no `id`, `title`, `kind`, `status`, `description` or `url`:
   "start_time": "14:00",
   "ends_on": "",
   "end_time": "16:00",
+  "tentative": false,
   "rooms": ["Lifecenter"],
   "public": false
 }

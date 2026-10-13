@@ -125,6 +125,9 @@ func readRepeat(r *http.Request, start string) (f repeatForm, rule recur.Rule, s
 	}
 	sd, err := recur.ParseDate(start)
 	if err != nil {
+		if start == "" {
+			return f, rule, true, []string{"A repeating event needs its first date. Pick the day it starts, or choose Never."}
+		}
 		return f, rule, true, []string{"Pick the day it starts before choosing how it repeats."}
 	}
 	bad := func(msg string) { errs = append(errs, msg) }
