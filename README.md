@@ -46,6 +46,30 @@ Management (8100) can run alongside it.
 | Offline | Installable as an app. The dashboard and an event's overview open from the last copy when there's no signal. |
 | Users and access | Three roles: Helper, Planner and Admin (see [Roles](#roles)). Admins manage users, settings, connections, backups and API tokens, and can lock an event to a list of people. Locked events are busy-only to everyone else. Admins see every event. |
 
+## Works alone, or with the other church apps
+
+The event planner runs on its own, with its own users, calendar and API. You
+can use just this one app. Connecting another church app is optional and
+adds features. Until a connection is set up (on `/admin/connections` or with
+environment variables) it is off, and the app acts as if that app doesn't
+exist. Each app keeps its own data. Here, a connected app's things are kept
+as an ID plus a cached name, so pages still work if that app is down.
+
+| Connected app | What it adds | What this app keeps |
+|---------------|--------------|---------------------|
+| Nothing (alone) | Everything in [Features](#features): events, tasks, rooms, needs, helpers, the public calendar, the [events API](#the-events-api), local login | Its own users, and rooms and needs typed in by hand |
+| [Maintenance tracker](#the-maintenance-tracker) | Pick rooms and places, and products, items and supplies for needs, with how many are on hand and **short by** | The tracker's IDs and a cached name or path |
+| [Church calendar](#public-calendar) | Every event date and its rooms are sent to it. `/calendar`, `/calendar.ics` and signed-out `/` redirect to it. | Its own events. Its own public calendar stays, for when the calendar connection is off. |
+| [User Management](#single-sign-on) | Sign in with a church account, roles, and the people pickers and Users page | A local user row linked to the User Management ID, so history stays |
+
+This app owns events, with their dates, tasks, rooms, helper jobs and needs.
+What others may see of them is the [events API](#the-events-api) and, when
+connected, what it sends to the calendar. Notes, tasks, helpers and needs are
+never shared.
+
+Setup is in [Connections](#connections), [The maintenance tracker](#the-maintenance-tracker),
+[Configuration](#configuration) and [Single sign-on](#single-sign-on).
+
 ## Roles
 
 Everyone who works in the app has one of three roles. Each role includes the
