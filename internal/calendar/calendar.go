@@ -77,6 +77,19 @@ type Booking struct {
 	// Replaces is a hand-made calendar booking this one takes over
 	// (Make this an event), 0 for none.
 	Replaces int64 `json:"replaces,omitempty"`
+	// Signup is a link to the event's sign-up form; left out when there is
+	// none (no form, a draft, or a locked event).
+	Signup *Signup `json:"signup,omitempty"`
+}
+
+// Signup is the sign-up link on a booking. State is "open", "full" or
+// "closed"; ClosesAt is "YYYY-MM-DDTHH:MM" (event time) or blank. The
+// calendar never sees answers, counts or names.
+type Signup struct {
+	Label    string `json:"label"`
+	URL      string `json:"url"`
+	State    string `json:"state"`
+	ClosesAt string `json:"closes_at,omitempty"`
 }
 
 // Block is a booking as the calendar shows it to us: in full, or only its

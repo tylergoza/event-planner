@@ -54,6 +54,21 @@ func (s *Server) routes() http.Handler {
 	mux.HandleFunc("GET /calendar/{id}", s.handleCalendarEvent)
 	auth("GET /live", s.handleLive)
 
+	// Public sign-up forms (session and CSRF still apply). The status link
+	// routes are the signer's own page, found by the code in the link.
+	mux.HandleFunc("GET /signup/{code}", s.handleSignupForm)
+	mux.HandleFunc("POST /signup/{code}", s.handleSignupSubmit)
+	mux.HandleFunc("GET /signup/{code}/s/{scode}", s.handleSignupStatus)
+	mux.HandleFunc("GET /signup/{code}/s/{scode}/edit", s.handleSignupEdit)
+	mux.HandleFunc("POST /signup/{code}/s/{scode}", s.handleSignupChange)
+	mux.HandleFunc("POST /signup/{code}/s/{scode}/withdraw", s.handleSignupWithdraw)
+	// Signed-in people reach their own sign-ups by ID.
+	auth("GET /my/signups", s.handleMySignups)
+	auth("GET /my/signups/{id}", s.handleSignupStatus)
+	auth("GET /my/signups/{id}/edit", s.handleSignupEdit)
+	auth("POST /my/signups/{id}", s.handleSignupChange)
+	auth("POST /my/signups/{id}/withdraw", s.handleSignupWithdraw)
+
 	auth("GET /events", s.handleEvents)
 	plan("GET /events/new", s.handleEventNew)
 	plan("POST /events", s.handleEventCreate)
@@ -65,6 +80,26 @@ func (s *Server) routes() http.Handler {
 	plan("GET /events/{id}/copy", s.handleEventCopyForm)
 	plan("POST /events/{id}/copy", s.handleEventCopy)
 	auth("GET /events/{id}/people", s.handlePeople)
+
+	// Meeting agenda: planners and the meeting's members change it (checked
+	// in the handlers); everyone who can see the meeting can read it.
+	auth("GET /events/{id}/agenda", s.handleAgendaPrint)
+	auth("POST /events/{id}/agenda", s.handleAgendaCreate)
+	auth("GET /agenda/{id}/edit", s.handleAgendaEdit)
+	auth("POST /agenda/{id}", s.handleAgendaUpdate)
+	auth("POST /agenda/{id}/delete", s.handleAgendaDelete)
+	auth("POST /agenda/{id}/move", s.handleAgendaMove)
+
+	// Events discussed and minutes: same people as the agenda. Closing out
+	// an event that has ended is a planner action.
+	auth("POST /events/{id}/discussed", s.handleDiscussedLink)
+	auth("POST /events/{id}/discussed/idea", s.handleDiscussedIdea)
+	auth("POST /events/{id}/discussed/{eid}/note", s.handleDiscussedNote)
+	auth("POST /events/{id}/discussed/{eid}/move", s.handleDiscussedMove)
+	auth("POST /events/{id}/discussed/{eid}/delete", s.handleDiscussedDelete)
+	auth("POST /events/{id}/bring-over", s.handleBringOver)
+	auth("POST /events/{id}/minutes", s.handleMinutes)
+	plan("POST /events/{id}/status", s.handleCloseOut)
 
 	// Repeating events: series actions are planner actions.
 	auth("GET /series/{id}", s.handleSeriesShow)
@@ -109,6 +144,35 @@ func (s *Server) routes() http.Handler {
 	plan("POST /rooms/{id}", s.handleRoomUpdate)
 	plan("POST /rooms/{id}/delete", s.handleRoomDelete)
 	plan("POST /rooms/{id}/move", s.handleMove("event_rooms"))
+
+	// sign-up form builder (on the event's edit page)
+	plan("POST /events/{id}/signup-form", s.handleSignupFormCreate)
+	plan("POST /events/{id}/signup-form/settings", s.handleSignupFormSettings)
+	plan("POST /events/{id}/signup-form/delete", s.handleSignupFormDelete)
+	plan("POST /events/{id}/signup-questions", s.handleSignupQuestionCreate)
+	plan("POST /signup-questions/{id}", s.handleSignupQuestionUpdate)
+	plan("POST /signup-questions/{id}/delete", s.handleSignupQuestionDelete)
+	plan("POST /signup-questions/{id}/retire", s.handleSignupQuestionRetire)
+	plan("POST /signup-questions/{id}/move", s.handleSignupQuestionMove)
+	plan("POST /signup-questions/{id}/choices", s.handleSignupChoiceCreate)
+	plan("POST /signup-questions/{id}/choices/paste", s.handleSignupChoicePaste)
+	plan("POST /signup-choices/{id}", s.handleSignupChoiceUpdate)
+	plan("POST /signup-choices/{id}/delete", s.handleSignupChoiceDelete)
+	plan("POST /signup-choices/{id}/retire", s.handleSignupChoiceRetire)
+	plan("POST /signup-choices/{id}/move", s.handleSignupChoiceMove)
+
+	// sign-up responses: the list is for anyone who can see the event; the
+	// CSV and allergy list check the event team in the handlers; planners
+	// add, edit and withdraw
+	auth("GET /events/{id}/signups", s.handleSignups)
+	auth("GET /events/{id}/signups.csv", s.handleSignupsCSV)
+	auth("GET /events/{id}/allergies", s.handleAllergies)
+	plan("GET /events/{id}/signups/new", s.handleSignupNew)
+	plan("POST /events/{id}/signups/new", s.handleSignupNewSave)
+	plan("GET /signups/{id}/edit", s.handleSignupPlannerEdit)
+	plan("POST /signups/{id}/edit", s.handleSignupPlannerSave)
+	plan("POST /signups/{id}/withdraw", s.handleSignupPlannerWithdraw)
+	plan("POST /signups/{id}/note", s.handleSignupNote)
 
 	// helpers routes
 	auth("GET /events/{id}/helpers", s.handleHelpers)
@@ -210,6 +274,14 @@ func (s *Server) securityHeaders(next http.Handler) http.Handler {
 		h.Set("Content-Security-Policy", s.contentSecurityPolicy(r))
 		h.Set("X-Content-Type-Options", "nosniff")
 		h.Set("X-Frame-Options", "DENY")
+		if strings.HasPrefix(r.URL.Path, "/signup/") {
+			// Sign-up forms may be shown inside the church website's page.
+			if origins := s.signupEmbedOrigins(); len(origins) > 0 {
+				h.Set("Content-Security-Policy", strings.Replace(h.Get("Content-Security-Policy"),
+					"frame-ancestors 'none'", "frame-ancestors "+strings.Join(origins, " "), 1))
+				h.Del("X-Frame-Options")
+			}
+		}
 		h.Set("Referrer-Policy", "same-origin")
 		if s.isHTTPS(r) {
 			h.Set("Strict-Transport-Security", "max-age=31536000")
@@ -284,9 +356,14 @@ func (s *Server) csrf(next http.Handler) http.Handler {
 		}
 		if token == "" {
 			token = randomToken()
+			same := http.SameSiteLaxMode
+			if s.isHTTPS(r) && strings.HasPrefix(r.URL.Path, "/signup/") && isEmbed(r) && len(s.signupEmbedOrigins()) > 0 {
+				// Shown in another site's frame: a Lax cookie wouldn't be kept.
+				same = http.SameSiteNoneMode
+			}
 			http.SetCookie(w, &http.Cookie{
 				Name: csrfCookie, Value: token, Path: "/", HttpOnly: true,
-				SameSite: http.SameSiteLaxMode, Secure: s.isHTTPS(r), MaxAge: 365 * 24 * 3600,
+				SameSite: same, Secure: s.isHTTPS(r), MaxAge: 365 * 24 * 3600,
 			})
 		}
 		next.ServeHTTP(w, withValue(r, ctxCSRF, token))

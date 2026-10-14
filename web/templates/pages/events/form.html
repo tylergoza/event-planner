@@ -14,6 +14,18 @@
     <p class="hint">Rooms from the calendar: {{.CalendarRoomList}}. They'll be added.</p>
     {{end}}
     {{end}}
+    {{if .Form.ID}}
+    <input type="hidden" name="type" value="{{.Form.Type}}">
+    {{else}}
+    <fieldset class="fieldset">
+      <legend>What is it</legend>
+      <div class="segmented">
+        <label><input type="radio" name="type" value="event" {{if not .Form.IsMeeting}}checked{{end}}> Event</label>
+        <label><input type="radio" name="type" value="meeting" {{if .Form.IsMeeting}}checked{{end}}> Meeting</label>
+      </div>
+      <p class="hint">A meeting has an agenda, minutes and the events it talked about.</p>
+    </fieldset>
+    {{end}}
     <div class="field">
       <label for="title">Title</label>
       <input id="title" name="title" value="{{.Form.Title}}" required maxlength="200" {{if not .Form.ID}}autofocus{{end}}>
@@ -119,11 +131,12 @@
     <p class="hint">Locked: only the people an admin picked can see it.</p>
     {{end}}
     <div class="form__actions">
-      <button type="submit" class="btn btn--primary">{{if .Form.ID}}Save{{else}}Add event{{end}}</button>
+      <button type="submit" class="btn btn--primary">{{if .Form.ID}}Save{{else if .Form.IsMeeting}}Add meeting{{else}}Add event{{end}}</button>
       <a class="btn btn--ghost" href="{{if .Form.ID}}/events/{{.Form.ID}}{{else}}/events{{end}}">Cancel</a>
     </div>
   </form>
 </div>
+{{if .Form.ID}}{{template "signup-builder" .}}{{end}}
 {{if .Form.ID}}
 <div class="card narrow danger-zone">
   {{if .Form.SeriesID}}
@@ -131,9 +144,9 @@
   <p class="muted small">Removes only {{fmtDate .Form.OccurrenceDate}}, with its schedule, tasks, rooms, helpers and needs. The other dates aren't affected, and the series won't bring this one back unless you restore it. To remove all later dates, <a href="/events/{{.Form.ID}}/end-series">end the series from this date</a>.</p>
   {{template "delete-button" (dict "Action" (printf "/events/%d/delete" .Form.ID) "CSRF" .CSRF "Label" "Skip this date" "Confirm" (printf "Remove only %s? Other dates in the series aren't affected." (fmtDate .Form.OccurrenceDate)))}}
   {{else}}
-  <h2 class="section__title">Delete this event</h2>
+  <h2 class="section__title">Delete this {{if .Form.IsMeeting}}meeting{{else}}event{{end}}</h2>
   <p class="muted small">Deletes its schedule, tasks, rooms, helpers and needs. Nothing in the maintenance tracker is touched. To keep it on record instead, set its status to Done.</p>
-  {{template "delete-button" (dict "Action" (printf "/events/%d/delete" .Form.ID) "CSRF" .CSRF "Label" "Delete event" "Confirm" (printf "Delete %s and everything in it? This can't be undone." .Form.Title))}}
+  {{template "delete-button" (dict "Action" (printf "/events/%d/delete" .Form.ID) "CSRF" .CSRF "Label" (printf "Delete %s" (or (and .Form.IsMeeting "meeting") "event")) "Confirm" (printf "Delete %s and everything in it? This can't be undone." .Form.Title))}}
   {{end}}
 </div>
 {{end}}

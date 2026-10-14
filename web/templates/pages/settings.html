@@ -8,6 +8,11 @@
       <label for="site_name">Site name</label>
       <input id="site_name" name="site_name" value="{{.SiteNameValue}}" required>
     </div>
+    <div class="field">
+      <label for="signup_embed_origins">Sites that can show sign-up forms</label>
+      <textarea id="signup_embed_origins" name="signup_embed_origins" rows="3" placeholder="https://church.example">{{.EmbedValue}}</textarea>
+      <p class="hint">One site per line, like https://church.example (no path). Those sites can show a sign-up form in a frame using <code>?embed=1</code> on its link. Blank: no site can.</p>
+    </div>
     <div class="form__actions"><button type="submit" class="btn btn--primary">Save settings</button></div>
   </form>
 </div>

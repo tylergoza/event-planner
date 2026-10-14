@@ -75,16 +75,17 @@ type Server struct {
 	ssoBaseURL atomic.Value
 	grants     *grantChecks
 
-	limiter *loginLimiter
-	live    *hub
-	handler http.Handler
+	limiter       *loginLimiter
+	signupLimiter *loginLimiter // public sign-up posts per IP
+	live          *hub
+	handler       http.Handler
 }
 
 func New(cfg Config, st *store.Store, logger *slog.Logger) (*Server, error) {
 	if cfg.SessionTTL == 0 {
 		cfg.SessionTTL = 30 * 24 * time.Hour
 	}
-	s := &Server{cfg: cfg, store: st, log: logger, limiter: newLoginLimiter(10, 15*time.Minute), live: newHub(), grants: newGrantChecks(),
+	s := &Server{cfg: cfg, store: st, log: logger, limiter: newLoginLimiter(10, 15*time.Minute), signupLimiter: newLoginLimiter(30, 15*time.Minute), live: newHub(), grants: newGrantChecks(),
 		calendarKick: make(chan struct{}, 1)}
 	s.ssoBroken.Store("")
 	s.ssoBaseURL.Store("")

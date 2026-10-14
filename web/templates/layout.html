@@ -16,7 +16,7 @@
   <script type="module" src="{{asset "js/application.js"}}"></script>
 </head>
 <body>
-  <a class="skip-link" href="#main">Skip to content</a>
+  {{if not .Embed}}<a class="skip-link" href="#main">Skip to content</a>
 
   <header class="topbar" data-controller="nav" data-action="keydown.esc@window->nav#close">
     <div class="topbar__inner">
@@ -62,6 +62,7 @@
       {{end}}
     </div>
   </header>
+  {{end}}
 
   <div class="offline-banner" hidden data-controller="pwa--network" role="status">
     You're offline. Showing the last saved copy; changes can't be made until you reconnect.
@@ -93,8 +94,8 @@
     {{end}}
   </main>
 
-  <footer class="footer container">
+  {{if not .Embed}}<footer class="footer container">
     <span>{{.SiteName}}</span>
-  </footer>
+  </footer>{{end}}
 </body>
 </html>

@@ -1,0 +1,37 @@
+{{define "content"}}
+{{$e := .E}}
+<div class="no-print section__head" data-controller="print">
+  <a href="/events/{{$e.ID}}#agenda">Back to the meeting</a>
+  <button type="button" class="btn btn--primary" data-action="print#print">Print</button>
+</div>
+<div class="print-sheet">
+  <h1 class="print-title">{{$e.Title}}</h1>
+  <p class="muted">{{$e.When}}{{with $e.Kind}} · {{.}}{{end}}</p>
+  {{if .Rooms}}<p><strong>Where:</strong> {{range $i, $r := .Rooms}}{{if $i}}, {{end}}{{$r.PlaceName}}{{end}}</p>{{end}}
+
+  <h2 class="section__title">Agenda</h2>
+  {{if .Agenda}}
+  <ol class="agenda-print">
+    {{range .Agenda}}
+      <li><strong>{{.Title}}</strong>{{with .Details}}{{range lines .}}<br><span class="small">{{.}}</span>{{end}}{{end}}</li>
+    {{end}}
+  </ol>
+  {{else}}
+    <p class="muted">No agenda yet.</p>
+  {{end}}
+
+  {{if .Discuss}}
+  <h2 class="section__title">Events to discuss</h2>
+  <ul class="plain-list">
+    {{range .Discuss}}
+      {{if .Visible}}
+        <li><strong>{{.Title}}</strong> <span class="muted small">· {{if .Scheduled}}{{fmtDate .StartsOn}}{{if .DateTentative}} (pencilled in){{end}}{{else}}Not scheduled yet{{end}} · {{eventStatusLabel .Status}}{{with .Coordinator}} · {{.}}{{end}}</span>
+          {{with .Note}}<br><span class="small">{{.}}</span>{{end}}</li>
+      {{else}}
+        <li class="muted">Private event</li>
+      {{end}}
+    {{end}}
+  </ul>
+  {{end}}
+</div>
+{{end}}

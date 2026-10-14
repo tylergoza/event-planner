@@ -240,7 +240,7 @@ func (s *Store) nextPosition(table string, eventID int64) (int, error) {
 }
 
 // movable lists the tables whose rows can be moved up and down.
-var movable = map[string]bool{"task_lists": true, "event_rooms": true, "helper_roles": true}
+var movable = map[string]bool{"task_lists": true, "event_rooms": true, "helper_roles": true, "agenda_items": true}
 
 // EventOf is the event a movable row belongs to.
 func (s *Store) EventOf(table string, id int64) (int64, error) {

@@ -1,0 +1,133 @@
+{{/* One question. Pass an suAsk. Names: see handlers_signup.go. */}}
+{{define "su-ask"}}
+<div class="su-ask" {{if .When}}data-signup-target="followup" data-signup-when="{{.When}}"{{end}}>
+  {{if .Opts}}
+  <fieldset class="su-fieldset">
+    <legend>{{.Label}}{{if .Required}} <span class="su-req" title="Required">*</span>{{end}}</legend>
+    {{with .Help}}<p class="hint">{{.}}</p>{{end}}
+    {{with .OnlyIf}}<p class="hint">{{.}}</p>{{end}}
+    {{if .Notice}}<p class="hint">Your first name, last initial and this answer show on this page.</p>{{end}}
+    {{range .Opts}}
+    <label class="check su-opt">
+      <input type="{{$.Input}}" name="{{$.Name}}" value="{{.Value}}" {{if .ID}}data-choice="{{.ID}}" data-excludes="{{.Excludes}}"{{end}} {{if .Checked}}checked{{end}} {{if .Disabled}}disabled data-full{{end}}>
+      <span>{{.Label}}</span>
+      {{with .Note}}<span class="hint">{{.}}</span>{{end}}
+      <span class="hint" data-note></span>
+    </label>
+    {{end}}
+  </fieldset>
+  {{else}}
+  <div class="field">
+    <label for="f-{{.Name}}">{{.Label}}{{if .Required}} <span class="su-req" title="Required">*</span>{{else}} <span class="optional">optional</span>{{end}}</label>
+    {{with .Help}}<p class="hint">{{.}}</p>{{end}}
+    {{with .OnlyIf}}<p class="hint">{{.}}</p>{{end}}
+    {{if .Notice}}<p class="hint">Your first name, last initial and this answer show on this page.</p>{{end}}
+    {{if eq .Kind "long_text"}}<textarea id="f-{{.Name}}" name="{{.Name}}" rows="3" maxlength="2000">{{.Value}}</textarea>
+    {{else if eq .Kind "number"}}<input id="f-{{.Name}}" name="{{.Name}}" type="number" step="any" value="{{.Value}}">
+    {{else}}<input id="f-{{.Name}}" name="{{.Name}}" type="text" maxlength="500" value="{{.Value}}">{{end}}
+  </div>
+  {{end}}
+</div>
+{{end}}
+
+{{define "content"}}
+<article class="card narrow su">
+  {{if .Preview}}<p class="alert alert--error" role="status"><strong>Preview: this form is a draft.</strong> Nobody else can see it and it can't take sign-ups yet.</p>{{end}}
+  {{if .Editing}}<p class="crumbs"><a href="{{.Cancel}}">&larr; {{with .BackLabel}}{{.}}{{else}}Back to your sign-up{{end}}</a></p>{{end}}
+  <h1>{{.Event.Title}}</h1>
+  <p class="muted">{{.When}}</p>
+  {{if not .Editing}}{{with .Form.Intro}}<p class="su-intro">{{.}}</p>{{end}}{{end}}
+  {{if and (not .ShowForm) .StateText}}<p class="alert alert--error" role="status"><strong>{{.StateText}}</strong></p>{{end}}
+  {{template "errors" .Errors}}
+
+  {{if .ShowForm}}
+  <form method="post" action="{{.Action}}" class="form" data-controller="signup" data-action="change->signup#update">
+    {{template "csrf" .CSRF}}
+    {{if .Embed}}<input type="hidden" name="embed" value="1">{{end}}
+    {{if .CanSubmit}}<button type="submit" class="sr-only" tabindex="-1" aria-hidden="true">{{.Submit}}</button>{{end}}
+    <div class="su-hp" aria-hidden="true"><label>Leave this empty <input type="text" name="website" tabindex="-1" autocomplete="off" value=""></label></div>
+
+    {{if .AsUser}}
+      <p>Signing up as <strong>{{.SignerName}}</strong>.</p>
+    {{else}}
+      <div class="field">
+        <label for="f-name">Your name</label>
+        <input id="f-name" name="name" type="text" maxlength="100" value="{{.Vals.Get "name"}}" autocomplete="name" required>
+      </div>
+      {{if or (eq .Form.Contact "phone") (eq .Form.Contact "phone_or_email")}}
+      <div class="field">
+        <label for="f-phone">Phone{{if eq .Form.Contact "phone"}}{{else}} <span class="optional">phone or email</span>{{end}}</label>
+        <input id="f-phone" name="phone" type="tel" maxlength="40" value="{{.Vals.Get "phone"}}" autocomplete="tel" {{if eq .Form.Contact "phone"}}required{{end}}>
+      </div>
+      {{end}}
+      {{if or (eq .Form.Contact "email") (eq .Form.Contact "phone_or_email")}}
+      <div class="field">
+        <label for="f-email">Email{{if eq .Form.Contact "email"}}{{else}} <span class="optional">phone or email</span>{{end}}</label>
+        <input id="f-email" name="email" type="email" maxlength="200" value="{{.Vals.Get "email"}}" autocomplete="email" {{if eq .Form.Contact "email"}}required{{end}}>
+      </div>
+      {{end}}
+    {{end}}
+
+    {{if eq .Form.People "list"}}
+    <fieldset class="su-fieldset">
+      <legend>Who's coming?</legend>
+      <div data-signup-target="people">
+        {{range .Rows}}
+        <div class="su-person" data-signup-person="{{.N}}">
+          <h3 class="su-person__title" data-signup-heading>Person {{add .N 1}}</h3>
+          <input type="hidden" name="p{{.N}}_id" value="{{.ID}}">
+          <div class="field">
+            <label for="f-p{{.N}}_name">Name</label>
+            <input id="f-p{{.N}}_name" name="p{{.N}}_name" type="text" maxlength="100" value="{{.Name}}" autocomplete="off">
+          </div>
+          {{if $.Form.AskAllergies}}
+          <div class="field">
+            <label for="f-p{{.N}}_allergies">Allergies or dietary needs <span class="optional">optional</span></label>
+            <input id="f-p{{.N}}_allergies" name="p{{.N}}_allergies" type="text" maxlength="300" value="{{.Allergies}}">
+          </div>
+          {{end}}
+          {{range .Ask}}{{template "su-ask" .}}{{end}}
+        </div>
+        {{end}}
+      </div>
+      <input type="hidden" name="people_n" value="{{len .Rows}}" data-signup-target="count">
+      <p>
+        <button type="submit" name="more" value="1" class="btn" formnovalidate data-signup-target="more">Add more people</button>
+        <button type="button" class="btn" hidden data-signup-target="add" data-action="signup#add">Add another person</button>
+      </p>
+    </fieldset>
+    {{else if .Form.AskAllergies}}
+    <div class="field">
+      <label for="f-p0_allergies">Allergies or dietary needs <span class="optional">optional</span></label>
+      <input id="f-p0_allergies" name="p0_allergies" type="text" maxlength="300" value="{{.Vals.Get "p0_allergies"}}">
+    </div>
+    {{end}}
+
+    {{range .Ask}}{{template "su-ask" .}}{{end}}
+
+    {{if .Form.AskGuests}}
+    <div class="field field--narrow">
+      <label for="f-guests">How many more guests? <span class="optional">optional</span></label>
+      <input id="f-guests" name="guests" type="number" min="0" max="500" value="{{.Vals.Get "guests"}}">
+    </div>
+    {{end}}
+
+    <div class="form__actions">
+      {{if .CanSubmit}}<button type="submit" class="btn btn--primary">{{.Submit}}</button>
+      {{else}}<button type="button" class="btn btn--primary" disabled>{{.Submit}}</button>{{end}}
+      {{if .Editing}}<a class="btn" href="{{.Cancel}}">Cancel</a>{{end}}
+    </div>
+  </form>
+  {{end}}
+</article>
+
+{{if .Lists}}
+<section class="card narrow su-bringing">
+  <h2>Who's bringing what</h2>
+  {{range .Lists}}
+  <h3>{{.Title}}</h3>
+  <ul>{{range .Entries}}<li>{{.Who}}{{range .Detail}} &middot; <em>{{.}}</em>{{end}}</li>{{end}}</ul>
+  {{end}}
+</section>
+{{end}}
+{{end}}

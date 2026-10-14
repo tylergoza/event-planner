@@ -168,6 +168,7 @@ func (s *Server) calendarBooking(e *store.Event, rooms []store.Room) calendar.Bo
 	if base := s.configuredBaseURL(); base != "" {
 		b.URL = base + "/events/" + strconv.FormatInt(e.ID, 10)
 	}
+	b.Signup = s.bookingSignup(e)
 	// The calendar keeps one row per room name.
 	seen := map[string]bool{}
 	for _, r := range rooms {
@@ -177,4 +178,37 @@ func (s *Server) calendarBooking(e *store.Event, rooms []store.Room) calendar.Bo
 		}
 	}
 	return b
+}
+
+// bookingSignup is the sign-up link sent with an event: nil for a locked
+// or non-public event, an event with no form or a draft form, or when the app's public
+// address isn't known (the link would not be usable).
+func (s *Server) bookingSignup(e *store.Event) *calendar.Signup {
+	base := s.configuredBaseURL()
+	if base == "" || e.Locked || e.Visibility != "public" {
+		return nil
+	}
+	f, err := s.store.SignupFormByEvent(e.ID)
+	if err != nil {
+		return nil
+	}
+	state, err := s.store.SignupState(f, e, time.Now())
+	if err != nil || state == store.SignupDraft {
+		return nil
+	}
+	return &calendar.Signup{Label: f.ButtonLabel(), URL: base + "/signup/" + f.Code, State: state, ClosesAt: f.ClosesAt}
+}
+
+// SweepSignups queues the calendar push for sign-up forms that closed by
+// themselves. Run with TopUpSeries.
+func (s *Server) SweepSignups() {
+	n, err := s.store.SweepSignupClosings(time.Now())
+	if err != nil {
+		s.log.Error("sweep sign-up closings", "err", err)
+		return
+	}
+	if n > 0 {
+		s.log.Info("queued closed sign-up forms", "forms", n)
+		s.KickCalendar()
+	}
 }

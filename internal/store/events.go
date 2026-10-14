@@ -46,6 +46,10 @@ type Event struct {
 	// CalendarReplaces is the calendar booking this event takes over on its
 	// first push; 0 once sent (or if none).
 	CalendarReplaces int64
+	// Type is "event" or "meeting" (MEETINGS_PLAN.md). Minutes are a
+	// meeting's own text; internal like Notes, never sent to the calendar.
+	Type    string
+	Minutes string
 	// SeriesID is the repeating series this is an occurrence of, 0 if none.
 	// OccurrenceDate is the date the series' rule gave it (it stays even if
 	// the event is moved to another day); "" when not in a series.
@@ -53,6 +57,20 @@ type Event struct {
 	OccurrenceDate string
 	CreatedAt      string
 	UpdatedAt      string
+}
+
+// IsMeeting reports whether the event is a meeting.
+func (e Event) IsMeeting() bool { return e.Type == "meeting" }
+
+// EventTypes are the choices for what an event is.
+var EventTypes = []string{"event", "meeting"}
+
+// NormalizeType maps anything but "meeting" to "event".
+func NormalizeType(t string) string {
+	if t == "meeting" {
+		return t
+	}
+	return "event"
 }
 
 // Scheduled reports whether the event has a date yet.
@@ -106,12 +124,12 @@ func (e Event) When() string {
 }
 
 const eventCols = `id, title, kind, status, starts_on, date_tentative, start_time, ends_on, end_time, coordinator, COALESCE(expected_count, 0),
-	description, notes, locked, COALESCE(copied_from, 0), visibility, public_description, COALESCE(series_id, 0), occurrence_date, COALESCE(calendar_replaces, 0), created_at, updated_at`
+	description, notes, locked, COALESCE(copied_from, 0), visibility, public_description, COALESCE(series_id, 0), occurrence_date, COALESCE(calendar_replaces, 0), type, minutes, created_at, updated_at`
 
 func scanEvent(sc interface{ Scan(...any) error }) (Event, error) {
 	var e Event
 	err := sc.Scan(&e.ID, &e.Title, &e.Kind, &e.Status, &e.StartsOn, &e.DateTentative, &e.StartTime, &e.EndsOn, &e.EndTime, &e.Coordinator,
-		&e.ExpectedCount, &e.Description, &e.Notes, &e.Locked, &e.CopiedFrom, &e.Visibility, &e.PublicDescription, &e.SeriesID, &e.OccurrenceDate, &e.CalendarReplaces, &e.CreatedAt, &e.UpdatedAt)
+		&e.ExpectedCount, &e.Description, &e.Notes, &e.Locked, &e.CopiedFrom, &e.Visibility, &e.PublicDescription, &e.SeriesID, &e.OccurrenceDate, &e.CalendarReplaces, &e.Type, &e.Minutes, &e.CreatedAt, &e.UpdatedAt)
 	return e, err
 }
 
@@ -128,10 +146,11 @@ func (s *Store) CreateEvent(e *Event) (int64, error) {
 		e.Status = "planning"
 	}
 	e.Visibility = NormalizeVisibility(e.Visibility)
+	e.Type = NormalizeType(e.Type)
 	res, err := s.DB.Exec(`INSERT INTO events (title, kind, status, starts_on, date_tentative, start_time, ends_on, end_time, coordinator, expected_count,
-		description, notes, locked, copied_from, visibility, public_description, calendar_replaces) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		description, notes, locked, copied_from, visibility, public_description, calendar_replaces, type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		e.Title, e.Kind, e.Status, e.StartsOn, e.DateTentative, e.StartTime, e.EndsOn, e.EndTime, e.Coordinator, nullInt(int64(e.ExpectedCount)),
-		e.Description, e.Notes, e.Locked, nullInt(e.CopiedFrom), e.Visibility, e.PublicDescription, nullInt(e.CalendarReplaces))
+		e.Description, e.Notes, e.Locked, nullInt(e.CopiedFrom), e.Visibility, e.PublicDescription, nullInt(e.CalendarReplaces), e.Type)
 	if err != nil {
 		return 0, err
 	}
@@ -151,10 +170,11 @@ func NormalizeVisibility(v string) string {
 
 func (s *Store) UpdateEvent(e *Event) error {
 	e.Visibility = NormalizeVisibility(e.Visibility)
+	e.Type = NormalizeType(e.Type)
 	_, err := s.DB.Exec(`UPDATE events SET title = ?, kind = ?, status = ?, starts_on = ?, date_tentative = ?, start_time = ?, ends_on = ?, end_time = ?,
-		coordinator = ?, expected_count = ?, description = ?, notes = ?, locked = ?, visibility = ?, public_description = ?, updated_at = datetime('now') WHERE id = ?`,
+		coordinator = ?, expected_count = ?, description = ?, notes = ?, locked = ?, visibility = ?, public_description = ?, type = ?, updated_at = datetime('now') WHERE id = ?`,
 		e.Title, e.Kind, e.Status, e.StartsOn, e.DateTentative, e.StartTime, e.EndsOn, e.EndTime, e.Coordinator, nullInt(int64(e.ExpectedCount)),
-		e.Description, e.Notes, e.Locked, e.Visibility, e.PublicDescription, e.ID)
+		e.Description, e.Notes, e.Locked, e.Visibility, e.PublicDescription, e.Type, e.ID)
 	return err
 }
 
@@ -268,10 +288,21 @@ func (t Tally) Percent() int {
 }
 
 // ListEvents returns the events u can see with their summaries: active
-// ones first by start date, then the rest newest first.
+// ones first by start date, then the rest newest first. Meetings are
+// included; see ListEventsOfType.
 func (s *Store) ListEvents(u *User, activeOnly bool, today string) ([]EventSummary, error) {
+	return s.ListEventsOfType(u, activeOnly, today, "")
+}
+
+// ListEventsOfType is ListEvents limited to one type: "event", "meeting",
+// or "" for both.
+func (s *Store) ListEventsOfType(u *User, activeOnly bool, today, typ string) ([]EventSummary, error) {
 	cond, args := visibleTo(u)
 	q := `SELECT ` + eventCols + ` FROM events e WHERE ` + cond
+	if typ != "" {
+		q += ` AND type = ?`
+		args = append(args, NormalizeType(typ))
+	}
 	if activeOnly {
 		q += ` AND status NOT IN ('done', 'cancelled')`
 	}

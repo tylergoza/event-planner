@@ -1,0 +1,22 @@
+{{define "content"}}
+<div class="card narrow">
+  <h2 class="section__title">Edit agenda item</h2>
+  {{template "errors" .Errors}}
+  <form method="post" action="/agenda/{{.Form.ID}}" class="form">
+    {{template "csrf" .CSRF}}
+    <div class="field">
+      <label for="title">Title</label>
+      <input id="title" name="title" value="{{.Form.Title}}" required maxlength="200">
+    </div>
+    <div class="field">
+      <label for="details">Details <span class="optional">optional</span></label>
+      <textarea id="details" name="details" rows="4">{{.Form.Details}}</textarea>
+    </div>
+    <label class="check"><input type="checkbox" name="carry_over" value="1" {{if .Form.CarryOver}}checked{{end}}> Carry over to next meeting</label>
+    <div class="form__actions">
+      <button type="submit" class="btn btn--primary">Save</button>
+      <a class="btn btn--ghost" href="/events/{{.E.ID}}#agenda">Cancel</a>
+    </div>
+  </form>
+</div>
+{{end}}

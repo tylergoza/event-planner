@@ -1,0 +1,18 @@
+{{define "content"}}
+<div class="page-head"><h1>My sign-ups</h1></div>
+{{if .Rows}}
+<div class="card narrow">
+  <ul class="su-mine">
+    {{range .Rows}}
+    <li>
+      <a href="/my/signups/{{.ID}}"><strong>{{.EventTitle}}</strong></a>
+      <span class="muted">{{.When}}</span>
+      {{if eq .Status "withdrawn"}}<span class="badge badge--unscheduled">Withdrawn</span>{{end}}
+    </li>
+    {{end}}
+  </ul>
+</div>
+{{else}}
+<div class="card narrow"><p class="muted">You haven't signed up for anything yet.</p></div>
+{{end}}
+{{end}}

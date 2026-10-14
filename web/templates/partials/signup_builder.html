@@ -1,0 +1,227 @@
+{{/* The question fields, shared by the add form and each question's own form.
+     dict "Q" suQuestion "Kinds" kinds "List" bool "P" id prefix */}}
+{{define "su-question-fields"}}
+  <div class="field-row field-row--wide">
+    <div class="field field--narrow">
+      <label for="{{.P}}-kind">Kind</label>
+      <select id="{{.P}}-kind" name="kind">
+        {{range .Kinds}}<option value="{{.Value}}" {{if eq .Value $.Q.Kind}}selected{{end}}>{{.Label}}</option>{{end}}
+      </select>
+    </div>
+    <div class="field">
+      <label for="{{.P}}-label">Question</label>
+      <input id="{{.P}}-label" name="label" value="{{.Q.Label}}" required maxlength="200">
+    </div>
+  </div>
+  <div class="field">
+    <label for="{{.P}}-help">Help <span class="optional">optional</span></label>
+    <input id="{{.P}}-help" name="help" value="{{.Q.Help}}" maxlength="300">
+  </div>
+  <label class="check"><input type="checkbox" name="required" value="1" {{if .Q.Required}}checked{{end}}> Required</label>
+  {{if .List}}
+  <label class="check"><input type="checkbox" name="per_person" value="1" {{if .Q.PerPerson}}checked{{end}}> Ask for each person</label>
+  {{else}}
+  <p class="hint">To ask a question once for each person, set "Who's coming" to a list above.</p>
+  {{end}}
+  <label class="check"><input type="checkbox" name="public_list" value="1" {{if .Q.PublicList}}checked{{end}}> Show on the form</label>
+  <p class="hint">Your first name, last initial and this answer show on this page. Not for questions asked for each person.</p>
+  {{if .Q.When}}
+  <div class="field">
+    <label for="{{.P}}-when">Only ask when <span class="optional">optional</span></label>
+    <select id="{{.P}}-when" name="when" multiple size="{{if gt (len .Q.When) 5}}5{{else}}{{len .Q.When}}{{end}}">
+      {{range .Q.When}}<option value="{{.ID}}" {{if .Selected}}selected{{end}}>{{.Label}}</option>{{end}}
+    </select>
+    <p class="hint">Only asked when one of these is picked. Choices from earlier questions only. Hold Ctrl or Cmd to pick more than one.</p>
+  </div>
+  {{end}}
+{{end}}
+
+{{/* The whole Sign-up section on the edit page. Pass the page data. */}}
+{{define "signup-builder"}}
+{{$su := .SU}}
+<div class="card narrow signup-builder" id="signup">
+  <h2 class="section__title">Sign-up</h2>
+  {{if not $su}}
+    <p class="muted small">Let people sign up for this {{if .Form.IsMeeting}}meeting{{else}}event{{end}} with a short form of your own questions. It stays a draft until you open it.</p>
+    <form method="post" action="/events/{{.Form.ID}}/signup-form" class="form">
+      {{template "csrf" .CSRF}}
+      <div class="form__actions"><button type="submit" class="btn">Add a sign-up form</button></div>
+    </form>
+  {{else}}
+    {{$f := $su.Form}}
+    <p class="signup-builder__status"><strong>{{$su.StateText}}</strong> · <a href="/signup/{{$f.Code}}">Preview</a></p>
+
+    <form method="post" action="/events/{{.Form.ID}}/signup-form/settings" class="form">
+      {{template "csrf" .CSRF}}
+      <div class="field">
+        <label for="su-label">Button label <span class="optional">optional</span></label>
+        <input id="su-label" name="label" value="{{$f.Label}}" maxlength="40" placeholder="Sign up">
+      </div>
+      <div class="field">
+        <label for="su-intro">Intro <span class="optional">optional</span></label>
+        <textarea id="su-intro" name="intro" rows="3">{{$f.Intro}}</textarea>
+      </div>
+      <div class="field-row field-row--wide">
+        <div class="field">
+          <label for="su-audience">Who can sign up</label>
+          <select id="su-audience" name="audience">
+            <option value="anyone" {{if eq $f.Audience "anyone"}}selected{{end}}>Anyone</option>
+            <option value="signed_in" {{if eq $f.Audience "signed_in"}}selected{{end}}>Signed-in people only</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="su-contact">Ask for contact</label>
+          <select id="su-contact" name="contact">
+            <option value="phone" {{if eq $f.Contact "phone"}}selected{{end}}>Phone</option>
+            <option value="email" {{if eq $f.Contact "email"}}selected{{end}}>Email</option>
+            <option value="phone_or_email" {{if eq $f.Contact "phone_or_email"}}selected{{end}}>Phone or email</option>
+            <option value="none" {{if eq $f.Contact "none"}}selected{{end}}>None</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="su-people">Who's coming</label>
+          <select id="su-people" name="people">
+            <option value="self" {{if eq $f.People "self"}}selected{{end}}>Just me</option>
+            <option value="list" {{if eq $f.People "list"}}selected{{end}}>A list of people</option>
+          </select>
+        </div>
+      </div>
+      <label class="check"><input type="checkbox" name="ask_guests" value="1" {{if $f.AskGuests}}checked{{end}}> Ask how many guests</label>
+      <label class="check"><input type="checkbox" name="ask_allergies" value="1" {{if $f.AskAllergies}}checked{{end}}> Ask about allergies and dietary needs</label>
+      <label class="check"><input type="checkbox" name="show_spots" value="1" {{if $f.ShowSpots}}checked{{end}}> Show spots left</label>
+      <div class="field-row field-row--wide">
+        <div class="field">
+          <label for="su-closes">Closes at <span class="optional">optional</span></label>
+          <input id="su-closes" name="closes_at" type="datetime-local" value="{{$f.ClosesAt}}">
+          <p class="hint">Blank means when the event starts.</p>
+        </div>
+        <div class="field">
+          <label for="su-status">Status</label>
+          <select id="su-status" name="status">
+            <option value="draft" {{if eq $f.Status "draft"}}selected{{end}}>Draft (not open)</option>
+            <option value="open" {{if eq $f.Status "open"}}selected{{end}}>Open</option>
+            <option value="closed" {{if eq $f.Status "closed"}}selected{{end}}>Closed</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label for="su-thanks">Thank-you message <span class="optional">optional</span></label>
+        <textarea id="su-thanks" name="thank_you" rows="2">{{$f.ThankYou}}</textarea>
+      </div>
+      <div class="form__actions"><button type="submit" class="btn btn--primary">Save sign-up settings</button></div>
+    </form>
+
+    <h3 class="section__title">Questions</h3>
+    {{if not $su.Questions}}<p class="muted small">No questions yet. Name, contact and people are always asked; add anything else you need to know.</p>{{end}}
+    {{range $su.Questions}}
+      {{$q := .}}
+      <section class="signup-q{{if .Retired}} signup-q--retired{{end}}" id="sq-{{.ID}}">
+        <div class="section__head">
+          <strong>{{if .Retired}}Retired{{else}}Question {{.Number}}{{end}}</strong>
+          <div class="signup-q__tools">
+            {{template "move-buttons" (dict "Action" (printf "/signup-questions/%d/move" .ID) "CSRF" $.CSRF "Next" "")}}
+          </div>
+        </div>
+        <form method="post" action="/signup-questions/{{.ID}}" class="form">
+          {{template "csrf" $.CSRF}}
+          {{template "su-question-fields" (dict "Q" $q "Kinds" $su.Kinds "List" (eq $su.Form.People "list") "P" (printf "q%d" .ID))}}
+          <div class="form__actions"><button type="submit" class="btn btn--sm btn--primary">Save question</button></div>
+        </form>
+        <div class="form__actions">
+          <form method="post" action="/signup-questions/{{.ID}}/retire" class="inline-form">
+            {{template "csrf" $.CSRF}}
+            {{if .Retired}}<input type="hidden" name="undo" value="1"><button type="submit" class="btn btn--ghost btn--sm">Bring back</button>
+            {{else}}<button type="submit" class="btn btn--ghost btn--sm">Retire</button>{{end}}
+          </form>
+          {{template "delete-button" (dict "Action" (printf "/signup-questions/%d/delete" .ID) "CSRF" $.CSRF "Label" "Delete" "Confirm" "Delete this question and its choices? If people have answered it, retire it instead.")}}
+        </div>
+        <p class="hint">Retire hides a question and keeps what people answered.</p>
+
+        {{if .IsPick}}
+        <div class="signup-choices">
+          <h4>Choices</h4>
+          {{if not .Items}}<p class="muted small">No choices yet.</p>{{end}}
+          {{range .Items}}
+          <div class="signup-choice{{if .Retired}} signup-choice--retired{{end}}">
+            <form method="post" action="/signup-choices/{{.ID}}" class="form">
+              {{template "csrf" $.CSRF}}
+              <div class="field-row field-row--wide">
+                <div class="field">
+                  <label for="c{{.ID}}-label">Choice{{if .Retired}} (retired){{end}}</label>
+                  <input id="c{{.ID}}-label" name="label" value="{{.Label}}" required maxlength="200">
+                </div>
+                <div class="field field--narrow">
+                  <label for="c{{.ID}}-spots">Spots</label>
+                  <input id="c{{.ID}}-spots" name="spots" type="number" min="1" max="9999" value="{{if .Spots}}{{.Spots}}{{end}}" placeholder="No limit">
+                </div>
+              </div>
+              {{if .Excludable}}
+              <div class="field">
+                <label for="c{{.ID}}-ex">Can't be picked with <span class="optional">optional</span></label>
+                <select id="c{{.ID}}-ex" name="excludes" multiple size="{{if gt (len .Excludable) 4}}4{{else}}{{len .Excludable}}{{end}}">
+                  {{range .Excludable}}<option value="{{.ID}}" {{if .Selected}}selected{{end}}>{{.Label}}</option>{{end}}
+                </select>
+              </div>
+              {{end}}
+              <div class="form__actions"><button type="submit" class="btn btn--sm">Save choice</button></div>
+            </form>
+            <div class="form__actions">
+              {{template "move-buttons" (dict "Action" (printf "/signup-choices/%d/move" .ID) "CSRF" $.CSRF "Next" "")}}
+              <form method="post" action="/signup-choices/{{.ID}}/retire" class="inline-form">
+                {{template "csrf" $.CSRF}}
+                {{if .Retired}}<input type="hidden" name="undo" value="1"><button type="submit" class="btn btn--ghost btn--sm">Bring back</button>
+                {{else}}<button type="submit" class="btn btn--ghost btn--sm">Retire</button>{{end}}
+              </form>
+              {{template "delete-button" (dict "Action" (printf "/signup-choices/%d/delete" .ID) "CSRF" $.CSRF "Label" "Delete" "Confirm" "Delete this choice?")}}
+            </div>
+          </div>
+          {{end}}
+          <form method="post" action="/signup-questions/{{.ID}}/choices" class="form">
+            {{template "csrf" $.CSRF}}
+            <div class="field-row field-row--wide">
+              <div class="field">
+                <label for="n{{.ID}}-label">Add a choice</label>
+                <input id="n{{.ID}}-label" name="label" required maxlength="200">
+              </div>
+              <div class="field field--narrow">
+                <label for="n{{.ID}}-spots">Spots</label>
+                <input id="n{{.ID}}-spots" name="spots" type="number" min="1" max="9999" placeholder="No limit">
+              </div>
+            </div>
+            <div class="form__actions"><button type="submit" class="btn btn--sm">Add choice</button></div>
+          </form>
+          <details class="list-tools">
+            <summary>Paste many choices</summary>
+            <form method="post" action="/signup-questions/{{.ID}}/choices/paste" class="form">
+              {{template "csrf" $.CSRF}}
+              <div class="field">
+                <label for="p{{.ID}}-text">One per line</label>
+                <textarea id="p{{.ID}}-text" name="text" rows="5" placeholder="Make chili | 12&#10;Bring bread | 6&#10;Dessert"></textarea>
+                <p class="hint">Add <code>| 12</code> after a name for 12 spots. Leave it off for no limit.</p>
+              </div>
+              <div class="form__actions"><button type="submit" class="btn btn--sm">Add them</button></div>
+            </form>
+          </details>
+        </div>
+        {{end}}
+      </section>
+    {{end}}
+
+    <section class="signup-q" id="signup-add">
+      <h3 class="section__title">Add a question</h3>
+      <form method="post" action="/events/{{.Form.ID}}/signup-questions" class="form">
+        {{template "csrf" .CSRF}}
+        {{template "su-question-fields" (dict "Q" $su.NewQ "Kinds" $su.Kinds "List" (eq $f.People "list") "P" "newq")}}
+        <p class="hint">After adding a pick question you can give it choices.</p>
+        <div class="form__actions"><button type="submit" class="btn btn--primary btn--sm">Add question</button></div>
+      </form>
+    </section>
+
+    <div class="danger-zone">
+      <h3 class="section__title">Remove the sign-up form</h3>
+      <p class="muted small">Removes the form and its questions. If anyone has signed up it can't be removed: close it instead.</p>
+      {{template "delete-button" (dict "Action" (printf "/events/%d/signup-form/delete" .Form.ID) "CSRF" .CSRF "Label" "Remove sign-up form" "Confirm" "Remove the sign-up form and all its questions?")}}
+    </div>
+  {{end}}
+</div>
+{{end}}

@@ -1,9 +1,28 @@
 {{define "content"}}
 <div class="page-head">
   <div><h1>Dashboard</h1><p class="muted">Events in the works and what's on your plate.</p></div>
-  <div class="page-head__actions"><a class="btn" href="/calendar">Calendar</a> <a class="btn btn--primary" href="/events/new">New event</a></div>
+  <div class="page-head__actions"><a class="btn" href="/calendar">Calendar</a> {{if .User.CanPlan}}<a class="btn" href="/events/new?type=meeting">New meeting</a> {{end}}<a class="btn btn--primary" href="/events/new">New event</a></div>
 </div>
 
+{{if .Closing}}
+<section class="section" id="needs-closing-out">
+  <h2 class="section__title">Needs closing out</h2>
+  <p class="muted small">These have finished but are still marked as planning or ready.</p>
+  <ul class="plain-list">
+    {{range .Closing}}
+      <li><a href="/events/{{.ID}}">{{.Title}}</a> {{template "type-badge" .}} {{template "event-badge" .Status}} <span class="muted small">· {{fmtDate .LastDate}}</span></li>
+    {{end}}
+  </ul>
+</section>
+{{end}}
+{{if .OpenSignups}}
+<section class="section" id="open-signups">
+  <h2 class="section__title">Open sign-ups</h2>
+  <ul class="plain-list">
+    {{range .OpenSignups}}<li><a href="/events/{{.ID}}/signups">{{.Title}}</a> <span class="muted small">· {{.Text}}</span></li>{{end}}
+  </ul>
+</section>
+{{end}}
 {{if .Unscheduled}}
 <section class="section">
   <h2 class="section__title">Not scheduled yet</h2>
@@ -76,7 +95,7 @@
   <a class="card card--link event-card" href="/events/{{.ID}}">
     <div class="event-card__head">
       <h2 class="card__title">{{.Title}}</h2>
-      {{template "event-badge" .Status}} {{template "date-badge" .Event}}{{if .Locked}} {{template "locked-badge"}}{{end}} {{template "repeat-badge" .SeriesID}}
+      {{template "type-badge" .Event}} {{template "event-badge" .Status}} {{template "date-badge" .Event}}{{if .Locked}} {{template "locked-badge"}}{{end}} {{template "repeat-badge" .SeriesID}}
     </div>
     {{with .Kind}}<p class="muted small">{{.}}</p>{{end}}
     {{if .Scheduled}}<p class="event-card__next"><strong>{{relDays .StartsOn}}</strong><br><span class="muted small">{{.When}}</span></p>{{end}}

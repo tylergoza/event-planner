@@ -28,7 +28,8 @@ func isCookieFree(path string) bool {
 // home page (the calendar, when nobody is signed in). None of them are
 // wrapped in requireUser.
 func isPublicPath(path string) bool {
-	return path == "/" || path == "/calendar" || strings.HasPrefix(path, "/calendar/") || isCookieFree(path)
+	return path == "/" || path == "/calendar" || strings.HasPrefix(path, "/calendar/") ||
+		strings.HasPrefix(path, "/signup/") || isCookieFree(path)
 }
 
 func (s *Server) calAccess(r *http.Request) store.CalendarAccess {
@@ -199,7 +200,47 @@ func (s *Server) handleCalendarEvent(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, r, err)
 		return
 	}
-	s.renderCalendarPage(w, r, "calendar/show", map[string]any{"Title": c.Title, "C": c, "When": whenText(*c)})
+	data := map[string]any{"Title": c.Title, "C": c, "When": whenText(*c)}
+	if su, err := s.calendarSignup(c.EventID, currentUser(r)); err != nil {
+		s.serverError(w, r, err)
+		return
+	} else if su != nil {
+		data["Signup"] = su
+	}
+	s.renderCalendarPage(w, r, "calendar/show", data)
+}
+
+// calSignup is what the public event page says about its sign-up form.
+type calSignup struct {
+	URL     string
+	Label   string
+	State   string // open, full, closed
+	SignIn  bool   // open, but only for signed-in people and the viewer isn't
+	LoginTo string
+}
+
+// calendarSignup is nil when the event has no form or it is a draft.
+// The event is one the viewer can already see in full.
+func (s *Server) calendarSignup(eventID int64, u *store.User) (*calSignup, error) {
+	f, err := s.store.SignupFormByEvent(eventID)
+	if errors.Is(err, store.ErrNotFound) {
+		return nil, nil
+	} else if err != nil {
+		return nil, err
+	}
+	ev, err := s.store.GetEvent(eventID)
+	if err != nil {
+		return nil, err
+	}
+	state, err := s.store.SignupState(f, ev, time.Now())
+	if err != nil || state == store.SignupDraft {
+		return nil, err
+	}
+	out := &calSignup{URL: "/signup/" + f.Code, Label: f.ButtonLabel(), State: state}
+	if state == store.SignupOpen && u == nil && f.Audience == "signed_in" {
+		out.SignIn, out.LoginTo = true, "/login?next="+urlEscape(out.URL)
+	}
+	return out, nil
 }
 
 // notFoundFor renders the 404 page with the public header when nobody is

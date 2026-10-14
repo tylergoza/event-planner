@@ -1,7 +1,10 @@
 {{define "content"}}
 <div class="page-head">
   <div><h1>Events</h1><p class="muted">Everything planned here, current and past.</p></div>
-  {{if .User.CanPlan}}<div class="page-head__actions"><a class="btn btn--primary" href="/events/new">New event</a></div>{{end}}
+  {{if .User.CanPlan}}<div class="page-head__actions"><a class="btn" href="/events/new?type=meeting">New meeting</a> <a class="btn btn--primary" href="/events/new">New event</a></div>{{end}}
+</div>
+<div class="filters section" role="group" aria-label="Show">
+  {{range .TypeFilters}}<a class="btn btn--sm {{if eq $.Type .Key}}btn--primary{{else}}btn--ghost{{end}}" href="/events{{if .Key}}?type={{.Key}}{{end}}" {{if eq $.Type .Key}}aria-current="page"{{end}}>{{.Label}}</a>{{end}}
 </div>
 {{if .Unscheduled}}
 <section class="section">
@@ -13,7 +16,7 @@
   {{if .Unscheduled}}<h2 class="section__title">Scheduled</h2>{{end}}
   {{template "event-table" .Events}}
 {{else if not .Unscheduled}}
-  <div class="empty"><h2>No events yet</h2>{{if .User.CanPlan}}<p><a class="btn btn--primary" href="/events/new">New event</a></p>{{end}}</div>
+  <div class="empty"><h2>{{if eq .Type "meeting"}}No meetings yet{{else}}No events yet{{end}}</h2>{{if .User.CanPlan}}<p><a class="btn btn--primary" href="/events/new">New event</a></p>{{end}}</div>
 {{end}}
 {{end}}
 
@@ -25,7 +28,7 @@
     <tbody>
       {{range .}}
         <tr>
-          <td data-label="Event"><div><a href="/events/{{.ID}}"><strong>{{.Title}}</strong></a>{{with .Kind}}<br><span class="muted small">{{.}}</span>{{end}}</div></td>
+          <td data-label="Event"><div><a href="/events/{{.ID}}"><strong>{{.Title}}</strong></a> {{template "type-badge" .Event}}{{with .Kind}}<br><span class="muted small">{{.}}</span>{{end}}</div></td>
           <td data-label="Status">{{template "event-badge" .Status}} {{template "date-badge" .Event}}{{if .Locked}} {{template "locked-badge"}}{{end}} {{template "visibility-badge" .Visibility}} {{template "repeat-badge" .SeriesID}}</td>
           <td data-label="When"><div class="small">{{.When}}</div></td>
           <td data-label="Tasks"><div class="small">{{.Tasks.Done}} / {{.Tasks.Total}}{{if .Overdue}} <span class="text-alert">· {{.Overdue}} overdue</span>{{end}}</div></td>
