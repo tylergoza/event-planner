@@ -148,7 +148,9 @@
 
     # The unit in the repo has a placeholder TZ; this overrides it. Each
     # connection goes here when it's set, which locks it in the app's
-    # Connections page. Blank means the app's saved settings are used, so
+    # Connections page. The tracker and calendar only count as set with both
+    # an address and a token, so an address in vars.yml without its token
+    # (deployed without with-ep) leaves them to the app. Blank means the app's saved settings are used, so
     # unset a value and redeploy to hand it back to the app (after Keep in
     # settings). So does single sign-on when sso_url is set (unset it and
     # redeploy to turn SSO off; `local-login on` is the break-glass). Readable
@@ -158,10 +160,8 @@
         content: |
           [Service]
           Environment=TZ={{ tz }}
-          {% if tracker_url %}
-          Environment="TRACKER_URL={{ tracker_url }}"
-          {% endif %}
           {% if tracker_url and tracker_token %}
+          Environment="TRACKER_URL={{ tracker_url }}"
           Environment="TRACKER_TOKEN={{ tracker_token }}"
           {% endif %}
           {% if sso_url %}
@@ -171,13 +171,11 @@
           Environment="SSO_CLIENT_SECRET={{ sso_client_secret }}"
           Environment="BASE_URL={{ base_url }}"
           {% endif %}
-          {% if calendar_url %}
+          {% if calendar_url and calendar_token %}
           Environment="CALENDAR_URL={{ calendar_url }}"
-          {% endif %}
           {% if calendar_internal_url %}
           Environment="CALENDAR_INTERNAL_URL={{ calendar_internal_url }}"
           {% endif %}
-          {% if calendar_url and calendar_token %}
           Environment="CALENDAR_TOKEN={{ calendar_token }}"
           {% endif %}
         dest: /etc/systemd/system/event-planner.service.d/override.conf
