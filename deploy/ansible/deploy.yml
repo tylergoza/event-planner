@@ -161,7 +161,7 @@
           {% if tracker_url %}
           Environment="TRACKER_URL={{ tracker_url }}"
           {% endif %}
-          {% if tracker_token %}
+          {% if tracker_url and tracker_token %}
           Environment="TRACKER_TOKEN={{ tracker_token }}"
           {% endif %}
           {% if sso_url %}
@@ -177,7 +177,7 @@
           {% if calendar_internal_url %}
           Environment="CALENDAR_INTERNAL_URL={{ calendar_internal_url }}"
           {% endif %}
-          {% if calendar_token %}
+          {% if calendar_url and calendar_token %}
           Environment="CALENDAR_TOKEN={{ calendar_token }}"
           {% endif %}
         dest: /etc/systemd/system/event-planner.service.d/override.conf
