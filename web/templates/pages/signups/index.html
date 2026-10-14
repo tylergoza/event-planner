@@ -1,0 +1,90 @@
+{{define "content"}}
+{{$e := .E}}
+<div class="no-print section__head" data-controller="print">
+  <h2 class="section__title">Sign-ups</h2>
+  <div class="actions">
+    {{if .User.CanPlan}}<a class="btn btn--sm btn--primary" href="/events/{{$e.ID}}/signups/new">Add a sign-up</a>{{end}}
+    {{if .Team}}<a class="btn btn--sm btn--ghost" href="{{.CSVHref}}">CSV</a>
+    {{if .Form.AskAllergies}}<a class="btn btn--sm btn--ghost" href="/events/{{$e.ID}}/allergies">Allergies</a>{{end}}{{end}}
+    <button type="button" class="btn btn--sm btn--ghost" data-action="print#print">Print</button>
+  </div>
+</div>
+
+<div class="print-sheet">
+  <h1 class="print-title print-only">{{$e.Title}}: sign-ups</h1>
+  <p class="print-only muted">{{$e.When}}</p>
+  <p><strong>{{.StateText}}.</strong>
+    {{.Headcount}} {{if eq .Headcount 1}}person{{else}}people{{end}} signed up{{if .Guests}} ({{.People}} named + {{pluralize .Guests "guest"}}){{end}}{{if $e.ExpectedCount}}, {{$e.ExpectedCount}} expected{{end}}.</p>
+
+  {{if .Counts}}
+  <h2 class="section__title">Counts</h2>
+  {{range .Counts}}
+  <p class="small muted">{{.Question}}{{if .Retired}} (retired){{end}}</p>
+  <ul class="sr-counts">
+    {{range .Choices}}
+    <li><a href="{{.Href}}" {{if .Selected}}aria-current="true"{{end}}>{{.Label}}: {{.Taken}}{{if .Spots}} / {{.Spots}}{{end}}{{if .Full}} <span class="sr-full">Full</span>{{end}}</a></li>
+    {{end}}
+  </ul>
+  {{end}}
+  {{end}}
+
+  <div class="sr-views no-print">
+    {{if .Person}}<a class="btn btn--sm btn--ghost" href="{{.SignupHref}}">By sign-up</a><strong>By person</strong>
+    {{else}}<strong>By sign-up</strong><a class="btn btn--sm btn--ghost" href="{{.PersonHref}}">By person</a>{{end}}
+    <a class="btn btn--sm btn--ghost" href="{{.WithdrawnHref}}">{{if .Withdrawn}}Hide withdrawn{{else}}Show withdrawn{{end}}</a>
+    {{if .Choice}}<a class="btn btn--sm btn--ghost" href="{{.ClearHref}}">Clear filter{{with .ChoiceName}}: {{.}}{{end}}</a>{{end}}
+  </div>
+  {{if .Choice}}<p class="print-only">Showing only: {{.ChoiceName}}</p>{{end}}
+
+  {{if .Person}}
+    {{if .ByPerson}}
+    <div class="table-wrap">
+      <table class="table table--stack">
+        <thead><tr><th>Person</th><th>Answers</th>{{if .Team}}<th>Allergies</th>{{end}}<th>Signed up by</th></tr></thead>
+        <tbody>
+          {{range .ByPerson}}
+          <tr {{if .Withdrawn}}class="sr-signup--withdrawn"{{end}}>
+            <td data-label="Person"><strong>{{.Name}}</strong>{{if .Withdrawn}} <span class="chip">Withdrawn</span>{{end}}</td>
+            <td data-label="Answers">{{range .Lines}}{{.Label}}: {{.Text}}<br>{{end}}</td>
+            {{if $.Team}}<td data-label="Allergies">{{.Allergies}}</td>{{end}}
+            <td data-label="Signed up by">{{.Signer}}{{if $.Team}}{{with .Phone}}<br>{{.}}{{end}}{{with .Email}}<br>{{.}}{{end}}{{end}}</td>
+          </tr>
+          {{end}}
+        </tbody>
+      </table>
+    </div>
+    {{else}}<p class="muted">Nobody to show.</p>{{end}}
+  {{else}}
+    {{range .BySignup}}
+    <div class="sr-signup {{if eq .S.Status "withdrawn"}}sr-signup--withdrawn{{end}}" id="signup-{{.S.ID}}">
+      <h3>{{.S.Name}}{{if eq .S.Status "withdrawn"}} <span class="chip">Withdrawn</span>{{end}}</h3>
+      {{if $.Team}}<p class="muted small">{{.S.Phone}}{{if and .S.Phone .S.Email}} · {{end}}{{.S.Email}}</p>{{end}}
+      {{if or (eq $.Form.People "list") (gt (len .People) 1)}}
+      <ul>
+        {{range .People}}
+        <li><strong>{{.Name}}</strong>{{with .Allergies}} <span class="muted">Allergies: {{.}}</span>{{end}}
+          {{range .Lines}}<br><span class="small">{{.Label}}: {{.Text}}</span>{{end}}</li>
+        {{end}}
+      </ul>
+      {{else}}{{range .People}}{{with .Allergies}}<p class="small">Allergies: {{.}}</p>{{end}}{{end}}
+      {{end}}
+      {{if .S.Guests}}<p class="small">Plus {{pluralize .S.Guests "guest"}}.</p>{{end}}
+      {{if .Lines}}<dl class="cal-event__facts">{{range .Lines}}<dt>{{.Label}}</dt><dd>{{.Text}}</dd>{{end}}</dl>{{end}}
+      {{if and $.Team .S.PlannerNote}}<p class="small"><strong>Note:</strong> {{.S.PlannerNote}}</p>{{end}}
+      {{if $.User.CanPlan}}
+      <div class="actions no-print">
+        <a class="btn btn--sm btn--ghost" href="/signups/{{.S.ID}}/edit">Edit</a>
+        {{if eq .S.Status "in"}}{{template "delete-button" (dict "Action" (printf "/signups/%d/withdraw" .S.ID) "CSRF" $.CSRF "Label" "Withdraw" "Confirm" (printf "Withdraw %s's sign-up? Their spots are freed." .S.Name))}}{{end}}
+        <form method="post" action="/signups/{{.S.ID}}/note" class="inline-form sr-note">
+          {{template "csrf" $.CSRF}}
+          <label class="sr-only" for="note-{{.S.ID}}">Note for the team</label>
+          <input id="note-{{.S.ID}}" type="text" name="note" maxlength="2000" value="{{.S.PlannerNote}}" placeholder="Note for the team">
+          <button type="submit" class="btn btn--sm">Save note</button>
+        </form>
+      </div>
+      {{end}}
+    </div>
+    {{else}}<p class="muted">{{if .Choice}}Nobody picked that.{{else}}No sign-ups yet.{{end}}</p>{{end}}
+  {{end}}
+</div>
+{{end}}

@@ -123,6 +123,57 @@ scheduled. A Ready event needs a date, so the dashboard warns when one is
 still pencilled in. The room picker lists every tracker room, and rooms on an
 event that isn't scheduled yet are only held once it has a date.
 
+## Meetings
+
+A meeting is an event with the type **Meeting** (on the event form, or
+`/events/new?type=meeting`). It has everything an event has, and on its page:
+
+- **Agenda:** ordered items, each with optional details and a **Carry over
+  to next meeting** box. A repeating meeting's agenda carries into each
+  occurrence. The print view at `/events/{id}/agenda` is for paper.
+- **Events discussed:** add an existing event, or a **New idea**, which
+  creates an undated planning event linked to the meeting. Each row has a
+  note from the discussion. **Add task** on a row puts the task on that
+  event. **Bring over from last meeting** copies the last meeting's list
+  (keeping its notes as "Last time").
+- **Minutes:** one text box, always editable by planners and the people on
+  the meeting.
+
+Each discussed event's page lists **Discussed at** back-links to the
+meetings that mention it, and a new idea says **Came up at**. Agenda, minutes
+and notes are internal: a meeting shows on the calendar and in the API only
+as a normal event (times, rooms, status, visibility).
+
+When an event's end has passed and it's still Planning or Ready, its page
+offers **Mark as done** or **Mark as cancelled**, and the dashboard lists it
+under **Needs closing out**. A meeting needs minutes before it can be marked
+done.
+
+## Sign-ups
+
+Add a form on the event's edit page, in the **Sign-up** section. Its
+questions can have choices with spots, a choice can say it can't be picked
+with another, a question can be asked only when another choice is picked,
+and a question can be asked **per person** (for children's events) or once
+per sign-up. **Show on the form** lists the answers on the public page.
+**Preview** opens the form even while it's a draft.
+
+- **Public form:** `/signup/{code}`. Signed-in members get their name from
+  the account. Visitors give a name and the contact the form asks for. The
+  signer can change or withdraw from the status link, or from `/my/signups`
+  while signed in.
+- **Responses:** `/events/{id}/signups` lists counts per choice, the people,
+  and a **Print** and **CSV** option. Planners can add, edit or withdraw
+  anyone's sign-up.
+- **Allergies:** `/events/{id}/allergies` is the printable list for the event
+  team only.
+- **Embedding:** `/signup/{code}?embed=1` is for a church website's page. The
+  sites allowed to frame it are set on the admin settings page under
+  **Sites that can show sign-up forms**.
+- **Calendar:** the public calendar shows only a sign-up link and the form's
+  state (open, full, closed). Answers never go to the calendar, the API, the
+  `.ics` file or public pages.
+
 ## Public calendar
 
 Anyone can open `/calendar`. `/calendar?month=YYYY-MM&room=Name` picks the

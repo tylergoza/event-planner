@@ -147,10 +147,11 @@ func (s *Server) handleTaskCreate(w http.ResponseWriter, r *http.Request) {
 			s.serverError(w, r, err)
 			return
 		}
-		s.redirect(w, r, eventURL(e.ID, "/tasks#"+listAnchor(t.ListID)), t.Title+" added.")
+		// A form on another page (a meeting's events list) can ask to come back to it.
+		s.redirect(w, r, returnTo(r, eventURL(e.ID, "/tasks#"+listAnchor(t.ListID))), t.Title+" added.")
 		return
 	}
-	http.Redirect(w, r, eventURL(e.ID, "/tasks"), http.StatusSeeOther)
+	http.Redirect(w, r, returnTo(r, eventURL(e.ID, "/tasks")), http.StatusSeeOther)
 }
 
 // listAnchor is the id of a list's section on the task page.

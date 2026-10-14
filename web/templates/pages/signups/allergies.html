@@ -1,0 +1,30 @@
+{{define "content"}}
+{{$e := .E}}
+<div class="no-print section__head" data-controller="print">
+  <a href="/events/{{$e.ID}}/signups">Back to the sign-ups</a>
+  <button type="button" class="btn btn--primary" data-action="print#print">Print</button>
+</div>
+<div class="print-sheet">
+  <h1 class="print-title">{{$e.Title}}: allergies and dietary needs</h1>
+  <p class="muted">{{$e.When}}</p>
+  {{if not .Form.AskAllergies}}<p class="muted small">This form doesn't ask about allergies now. Anything shown was typed while it did.</p>{{end}}
+  {{if .Rows}}
+  <div class="table-wrap">
+    <table class="table table--stack">
+      <thead><tr><th>Person</th><th>Allergies and dietary needs</th><th>Source</th><th>Signed up by</th><th>Phone</th></tr></thead>
+      <tbody>
+        {{range .Rows}}
+        <tr>
+          <td data-label="Person"><strong>{{.Name}}</strong></td>
+          <td data-label="Allergies">{{.Allergies}}</td>
+          <td data-label="Source">typed for this event</td>
+          <td data-label="Signed up by">{{.SignerName}}</td>
+          <td data-label="Phone">{{.SignerPhone}}</td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+  {{else}}<p class="muted">Nobody has listed an allergy or dietary need.</p>{{end}}
+</div>
+{{end}}

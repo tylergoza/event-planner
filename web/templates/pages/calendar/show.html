@@ -8,6 +8,13 @@
     {{if .C.Rooms}}<dt>Where</dt><dd>{{range $i, $r := .C.Rooms}}{{if $i}}, {{end}}{{$r}}{{end}}</dd>{{end}}
   </dl>
   {{if .C.PublicDescription}}<p class="cal-desc">{{.C.PublicDescription}}</p>{{end}}
+  {{with .Signup}}
+    {{if eq .State "open"}}
+      {{if .SignIn}}<p><a class="btn btn--primary" href="{{.LoginTo}}">Sign in to sign up</a></p>
+      {{else}}<p><a class="btn btn--primary" href="{{.URL}}">{{.Label}}</a></p>{{end}}
+    {{else if eq .State "full"}}<p><strong>Full</strong></p>
+    {{else}}<p class="muted">Sign-ups closed</p>{{end}}
+  {{end}}
   {{if .User}}<p><a class="btn btn--sm" href="/events/{{.C.EventID}}">Open the planning page</a></p>{{end}}
 </article>
 {{end}}

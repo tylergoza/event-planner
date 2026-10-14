@@ -1,0 +1,37 @@
+{{define "content"}}
+{{if .Mine}}<p class="crumbs"><a href="/my/signups">&larr; My sign-ups</a></p>{{end}}
+<article class="card narrow su">
+  <h1>{{.Event.Title}}</h1>
+  <p class="muted">{{.When}}</p>
+  {{if .Withdrawn}}<p class="alert alert--error" role="status"><strong>You withdrew this sign-up.</strong> <a href="/signup/{{.Form.Code}}">Sign up again</a></p>
+  {{else}}
+    {{if .StateText}}<p class="hint">{{.StateText}}{{if not .CanChange}} It can't be changed now.{{end}}</p>{{end}}
+    <p>Signed up by <strong>{{.S.Name}}</strong>{{if .S.Phone}} &middot; {{.S.Phone}}{{end}}{{if .S.Email}} &middot; {{.S.Email}}{{end}}</p>
+  {{end}}
+  {{if .ListPeople}}
+  <h2>Who's coming</h2>
+  <ul>
+    {{range .People}}
+    <li><strong>{{.Name}}</strong>{{with .Allergies}} <span class="muted">Allergies: {{.}}</span>{{end}}
+      {{if .Lines}}<ul>{{range .Lines}}<li>{{.Label}}: {{.Text}}</li>{{end}}</ul>{{end}}
+    </li>
+    {{end}}
+  </ul>
+  {{else}}{{range .People}}{{with .Allergies}}<p>Allergies or dietary needs: {{.}}</p>{{end}}{{end}}
+  {{end}}
+  {{if .S.Guests}}<p>Plus {{pluralize .S.Guests "guest"}}.</p>{{end}}
+  {{if .Lines}}
+  <h2>Your answers</h2>
+  <dl class="cal-event__facts">{{range .Lines}}<dt>{{.Label}}</dt><dd>{{.Text}}</dd>{{end}}</dl>
+  {{end}}
+  {{if .CanChange}}
+  <div class="form__actions">
+    <a class="btn btn--primary" href="{{.Base}}/edit">Change</a>
+    <form method="post" action="{{.Base}}/withdraw" data-controller="confirm" data-confirm-message-value="Withdraw this sign-up? Your spot will be free for someone else." data-action="submit->confirm#check">
+      {{template "csrf" .CSRF}}
+      <button type="submit" class="btn btn--danger-ghost">Withdraw</button>
+    </form>
+  </div>
+  {{end}}
+</article>
+{{end}}

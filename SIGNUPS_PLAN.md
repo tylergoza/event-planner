@@ -4,8 +4,8 @@ The design is in `../.claude/plans/event-signups.md`; read its Decisions
 first. This file is the event planner's part. Everything up to step 5
 works with no other app connected; step 6 adds the member directory.
 
-Status: planned (2026-10-14, updated the same day with the user's
-answers), nothing built yet.
+Status: steps 1–5 built (2026-10-14). Step 6 waits for the member
+directory's API (`../member_directory/PLAN.md` step 14).
 
 ## How it fits with what's here
 
@@ -245,39 +245,39 @@ form), so it isn't `isCookieFree`.
 ## Steps
 
 ### 1. Forms and questions (planners, no public page yet)
-- [ ] Migration `0NN_signups.sql` (next free number); store: form, questions, choices, `signup_question_when`, `signup_choice_excludes`, positions, retire instead of delete when answered
-- [ ] **Sign-up** section on `/events/{id}/edit`: add form, settings, questions (per person, show on the form), choices with spots and **Can't be picked with**, paste, move, "Only ask when"
-- [ ] Copying an event or a series occurrence copies the form, questions and exclusions (new `code`, no answers, status `draft`)
-- [ ] Tests: "Only ask when" refuses a later question's choice, an exclusion across per-person and per-sign-up questions is refused, per-person + show on the form refused, retire vs delete, copy gets a new code and no answers
+- [x] Migration `0NN_signups.sql` (next free number); store: form, questions, choices, `signup_question_when`, `signup_choice_excludes`, positions, retire instead of delete when answered
+- [x] **Sign-up** section on `/events/{id}/edit`: add form, settings, questions (per person, show on the form), choices with spots and **Can't be picked with**, paste, move, "Only ask when"
+- [x] Copying an event or a series occurrence copies the form, questions and exclusions (new `code`, no answers, status `draft`)
+- [x] Tests: "Only ask when" refuses a later question's choice, an exclusion across per-person and per-sign-up questions is refused, per-person + show on the form refused, retire vs delete, copy gets a new code and no answers
 
 ### 2. The public form
-- [ ] `/signup/{code}`, `POST`, status link page, `/my/signups`; audience check (anyone needs a public, unlocked event)
-- [ ] Who's coming: just me / a list (typed names, **Add another person**), guests; per-person question blocks; the allergies box per person
-- [ ] Effective state (draft / open / full / closed) in one function, used everywhere
-- [ ] In `BEGIN IMMEDIATE`: spots (per person for per-person choices), can't-be-picked-with (per sign-up or per person); follow-up answers that don't apply are dropped; required checks skip questions that don't apply
-- [ ] `signup_controller.js`; page works without JS
-- [ ] Rate limit, honeypot, code shown once and stored hashed
-- [ ] **Sign up** button on the event planner's own `/calendar/{id}`
-- [ ] Tests: last spot taken by two at once (one wins), three people picking a 2-spot choice refused, Make chili + Judge chili refused on the form, a locked or private event refuses visitors, closes at the event start, withdrawing frees the spots, follow-ups ignored when not picked
+- [x] `/signup/{code}`, `POST`, status link page, `/my/signups`; audience check (anyone needs a public, unlocked event)
+- [x] Who's coming: just me / a list (typed names, **Add another person**), guests; per-person question blocks; the allergies box per person
+- [x] Effective state (draft / open / full / closed) in one function, used everywhere
+- [x] In `BEGIN IMMEDIATE`: spots (per person for per-person choices), can't-be-picked-with (per sign-up or per person); follow-up answers that don't apply are dropped; required checks skip questions that don't apply
+- [x] `signup_controller.js`; page works without JS
+- [x] Rate limit, honeypot, code shown once and stored hashed
+- [x] **Sign up** button on the event planner's own `/calendar/{id}`
+- [x] Tests: last spot taken by two at once (one wins), three people picking a 2-spot choice refused, Make chili + Judge chili refused on the form, a locked or private event refuses visitors, closes at the event start, withdrawing frees the spots, follow-ups ignored when not picked
 
 ### 3. Responses and the allergy list
-- [ ] `/events/{id}/signups`: counts, headcount (people + guests) vs `expected_count`, by sign-up / by person, filter per choice, print CSS
-- [ ] CSV: one row per person, sign-up questions repeated on each of its people's rows, picked choices joined with "; ", retired questions last, typed allergies included, directory notes never
-- [ ] Planners add, edit and withdraw sign-ups; going over spots or exclusions warns and saves; `planner_note`
-- [ ] `/events/{id}/allergies` (team only) from typed allergies; printable
-- [ ] Line on `/events/{id}` and a count on the dashboard for open forms
-- [ ] Tests: CSV columns with retired questions, planner over-spots warning, allergy page refused to a signed-in user who isn't on the team, answers never on `/calendar`, `/api/v1/events` or `.ics`
+- [x] `/events/{id}/signups`: counts, headcount (people + guests) vs `expected_count`, by sign-up / by person, filter per choice, print CSS
+- [x] CSV: one row per person, sign-up questions repeated on each of its people's rows, picked choices joined with "; ", retired questions last, typed allergies included, directory notes never
+- [x] Planners add, edit and withdraw sign-ups; going over spots or exclusions warns and saves; `planner_note`
+- [x] `/events/{id}/allergies` (team only) from typed allergies; printable
+- [x] Line on `/events/{id}` and a count on the dashboard for open forms
+- [x] Tests: CSV columns with retired questions, planner over-spots warning, allergy page refused to a signed-in user who isn't on the team, answers never on `/calendar`, `/api/v1/events` or `.ics`
 
 ### 4. Who's bringing what
-- [ ] **Show on the form** lists on `/signup/{code}`, grouped by choice, first name + last initial, `in` only, the notice on ticked questions, following the form's audience
-- [ ] Tests: withdrawn sign-ups gone from the list, a signed-in-only form's list hidden from visitors, per-person answers and people's names never listed
+- [x] **Show on the form** lists on `/signup/{code}`, grouped by choice, first name + last initial, `in` only, the notice on ticked questions, following the form's audience
+- [x] Tests: withdrawn sign-ups gone from the list, a signed-in-only form's list hidden from visitors, per-person answers and people's names never listed
 
 ### 5. Embed and the calendar link
-- [ ] `/signup/{code}?embed=1`: no nav, same form. `frame-ancestors` lists the sites in a **Sites that can show sign-up forms** setting (default none, so `'none'` stays the rule); it only changes on `/signup/` paths
-- [ ] `calendar.Booking` gains `Signup *Signup \`json:"signup,omitempty"\`` with `label`, `url`, `state`, `closes_at`; left out for drafts, locked events and when there's no form (shows once `../calendar/SIGNUPS_PLAN.md` step 1 is built; harmless before)
-- [ ] Triggers on `signup_forms` writing the event's outbox row; a state change from answers (open → full, full → open) also writes it, inside the sign-up's transaction; a plain answer doesn't
-- [ ] A sweep (with the 6-hourly series top-up) pushes forms whose `closes_at` has passed
-- [ ] Tests: CSP on embed vs other pages; outbox written on state change only
+- [x] `/signup/{code}?embed=1`: no nav, same form. `frame-ancestors` lists the sites in a **Sites that can show sign-up forms** setting (default none, so `'none'` stays the rule); it only changes on `/signup/` paths
+- [x] `calendar.Booking` gains `Signup *Signup \`json:"signup,omitempty"\`` with `label`, `url`, `state`, `closes_at`; left out for drafts, locked events and when there's no form (shows once `../calendar/SIGNUPS_PLAN.md` step 1 is built; harmless before)
+- [x] Triggers on `signup_forms` writing the event's outbox row; a state change from answers (open → full, full → open) also writes it, inside the sign-up's transaction; a plain answer doesn't
+- [x] A sweep (with the 6-hourly series top-up) pushes forms whose `closes_at` has passed
+- [x] Tests: CSP on embed vs other pages; outbox written on state change only
 
 ### 6. People from the directory (needs `../member_directory/PLAN.md` step 14)
 - [ ] **Directory** connection on `/admin/connections` (address + app token), the `Configured()` pattern; off = steps 1–5 exactly as they are

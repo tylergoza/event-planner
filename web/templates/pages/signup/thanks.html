@@ -1,0 +1,16 @@
+{{define "content"}}
+<article class="card narrow su">
+  <h1>Thank you!</h1>
+  <p>You're signed up for <strong>{{.Event.Title}}</strong> &middot; {{.When}}.</p>
+  {{with .ThankYou}}<p class="su-intro">{{.}}</p>{{end}}
+  {{if .Code}}
+    {{if .SignedIn}}
+    <p>You can change or withdraw any time in <a href="{{.Link}}">your sign-up</a> or <a href="/my/signups">My sign-ups</a>.</p>
+    {{else}}
+    <p><strong>Keep this link to change or withdraw.</strong> We only show it once.</p>
+    <p class="su-link"><a href="{{.Link}}">{{.Full}}</a></p>
+    {{end}}
+  {{end}}
+  <p><a class="btn" href="/signup/{{.FormCode}}{{if .Embed}}?embed=1{{end}}">Back to the form</a></p>
+</article>
+{{end}}

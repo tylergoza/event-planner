@@ -123,6 +123,7 @@ func main() {
 		defer t.Stop()
 		for {
 			srv.TopUpSeries()
+			srv.SweepSignups()
 			select {
 			case <-ctx.Done():
 				return

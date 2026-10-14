@@ -5,6 +5,230 @@
   {{range $i, $c := .CalendarClashes}}{{if $i}}; {{end}}{{template "clash" $c}}{{with $c.Rooms}} in {{.}}{{end}}{{end}}.</div>
 {{end}}
 {{with .CopiedFrom}}<p class="muted small">Copied from <a href="/events/{{.ID}}">{{.Title}}</a></p>{{end}}
+{{with .Signups}}<p class="signup-line"><a href="/events/{{$e.ID}}/signups">{{.Text}}</a>{{if ge .Allergies 0}} · <a href="/events/{{$e.ID}}/allergies">Allergies ({{.Allergies}})</a>{{end}}</p>{{end}}
+{{if and .NeedsClosingOut .User.CanPlan}}
+<section class="card card--alert section" id="close-out">
+  <h2 class="section__title">This event is over</h2>
+  <p>Is it finished, or did it not go ahead?</p>
+  <div class="actions">
+    <form method="post" action="/events/{{$e.ID}}/status" class="inline-form">
+      {{template "csrf" .CSRF}}<input type="hidden" name="status" value="done">
+      <button type="submit" class="btn btn--primary">Mark as done</button>
+    </form>
+    <form method="post" action="/events/{{$e.ID}}/status" class="inline-form">
+      {{template "csrf" .CSRF}}<input type="hidden" name="status" value="cancelled">
+      <button type="submit" class="btn btn--danger-ghost">Mark as cancelled</button>
+    </form>
+  </div>
+</section>
+{{end}}
+{{if $e.IsMeeting}}
+{{/* A meeting: Agenda, Events discussed, Minutes, Action items, Rooms. */}}
+<section class="card section" id="agenda">
+  <div class="section__head">
+    <h2 class="section__title">Agenda</h2>
+    <a class="btn btn--sm btn--ghost" href="/events/{{$e.ID}}/agenda">Print agenda</a>
+  </div>
+  {{if .Agenda}}
+  <ol class="agenda-list">
+    {{range .Agenda}}
+      <li class="agenda-item" id="agenda-{{.ID}}"><div class="agenda-item__row">
+        <div class="agenda-item__text">
+          <strong>{{.Title}}</strong>{{if .CarryOver}} <span class="chip" title="Copied to the next meeting when it brings things over">Carry over</span>{{end}}
+          {{with .Details}}{{range lines .}}<p class="muted small">{{.}}</p>{{end}}{{end}}
+        </div>
+        {{if $.CanEditAgenda}}
+        <div class="actions">
+          {{template "move-buttons" (dict "Action" (printf "/agenda/%d/move" .ID) "CSRF" $.CSRF "Next" (printf "/events/%d#agenda-%d" $e.ID .ID))}}
+          <a class="btn btn--ghost btn--sm" href="/agenda/{{.ID}}/edit">Edit</a>
+          {{template "delete-button" (dict "Action" (printf "/agenda/%d/delete" .ID) "CSRF" $.CSRF "Label" "Delete" "Confirm" (printf "Remove %s from the agenda?" .Title))}}
+        </div>
+        {{end}}
+      </div></li>
+    {{end}}
+  </ol>
+  {{else}}
+    <p class="muted">No agenda yet.{{if not $.CanEditAgenda}} The people on this meeting can add one.{{end}}</p>
+  {{end}}
+  {{if .CanEditAgenda}}
+  <form method="post" action="/events/{{$e.ID}}/agenda" class="form">
+    {{template "csrf" .CSRF}}
+    <div class="field">
+      <label for="agenda_title">Add an item</label>
+      <input id="agenda_title" name="title" required maxlength="200" placeholder="e.g. Open in prayer, Budget update">
+    </div>
+    <div class="field">
+      <label for="agenda_details">Details <span class="optional">optional</span></label>
+      <textarea id="agenda_details" name="details" rows="2"></textarea>
+    </div>
+    <label class="check"><input type="checkbox" name="carry_over" value="1"> Carry over to next meeting</label>
+    <div class="form__actions"><button type="submit" class="btn btn--primary">Add to agenda</button></div>
+  </form>
+  {{end}}
+</section>
+
+<section class="card section" id="discussed">
+  <div class="section__head">
+    <h2 class="section__title">Events discussed <span class="count">{{len .Discuss}}</span></h2>
+    {{if .CanEditAgenda}}
+    <form method="post" action="/events/{{$e.ID}}/bring-over" class="inline-form">
+      {{template "csrf" .CSRF}}
+      <button type="submit" class="btn btn--sm btn--ghost">Bring over from last meeting</button>
+    </form>
+    {{end}}
+  </div>
+  {{if .Discuss}}
+  <ul class="discuss-list">
+    {{range .Discuss}}
+      {{if .Visible}}
+      <li class="discuss-item" id="discussed-{{.EventID}}">
+        <div class="discuss-item__row">
+          <div class="discuss-item__text">
+            <strong><a href="/events/{{.EventID}}">{{.Title}}</a></strong>
+            {{template "event-badge" .Status}} {{template "date-badge" .}}
+            {{if .Locked}}{{template "locked-badge"}}{{end}}
+            <p class="muted small">
+              {{if .Scheduled}}{{fmtDate .StartsOn}}{{else}}Not scheduled yet{{end}}
+              · {{if .OpenTasks}}{{pluralize .OpenTasks "open task"}}{{else}}No open tasks{{end}}
+              {{with .Coordinator}}· Coordinator: {{.}}{{end}}
+            </p>
+          </div>
+          {{if $.CanEditAgenda}}
+          <div class="actions">
+            {{template "move-buttons" (dict "Action" (printf "/events/%d/discussed/%d/move" $e.ID .EventID) "CSRF" $.CSRF "Next" (printf "/events/%d#discussed-%d" $e.ID .EventID))}}
+            {{template "delete-button" (dict "Action" (printf "/events/%d/discussed/%d/delete" $e.ID .EventID) "CSRF" $.CSRF "Label" "Remove" "Confirm" (printf "Take %s off this meeting? The event itself stays." .Title))}}
+          </div>
+          {{end}}
+        </div>
+        {{if $.CanEditAgenda}}
+        <form method="post" action="/events/{{$e.ID}}/discussed/{{.EventID}}/note" class="discuss-item__note">
+          {{template "csrf" $.CSRF}}
+          <label class="sr-only" for="note-{{.EventID}}">What was said about {{.Title}}</label>
+          <textarea id="note-{{.EventID}}" name="note" rows="2" placeholder="What was said">{{.Note}}</textarea>
+          <button type="submit" class="btn btn--sm">Save note</button>
+        </form>
+        {{else}}
+          {{with .Note}}{{range lines .}}<p class="small">{{.}}</p>{{end}}{{end}}
+        {{end}}
+        <form method="post" action="/events/{{.EventID}}/tasks" class="discuss-item__task">
+          {{template "csrf" $.CSRF}}
+          <input type="hidden" name="return" value="/events/{{$e.ID}}#discussed-{{.EventID}}">
+          <label class="sr-only" for="task-{{.EventID}}">Add a task to {{.Title}}</label>
+          <input id="task-{{.EventID}}" name="title" required maxlength="200" placeholder="Add a task to this event">
+          <button type="submit" class="btn btn--sm btn--ghost">Add task</button>
+        </form>
+      </li>
+      {{else}}
+      <li class="discuss-item muted">Private event</li>
+      {{end}}
+    {{end}}
+  </ul>
+  {{else}}
+    <p class="muted">No events on this meeting yet.</p>
+  {{end}}
+  {{if .CanEditAgenda}}
+  <form method="get" action="/events/{{$e.ID}}#discussed" class="form">
+    <div class="field">
+      <label for="pick">Add an event</label>
+      <input id="pick" type="search" name="pick" value="{{.Pick}}" placeholder="Search by title, or leave empty to list">
+    </div>
+    <div class="form__actions"><button type="submit" class="btn">Find events</button></div>
+  </form>
+  {{if .Picking}}
+    {{if .PickResults}}
+    <ul class="plain-list">
+      {{range .PickResults}}
+        <li class="pick-row">
+          <span>{{.Title}} {{template "event-badge" .Status}} {{template "date-badge" .}} <span class="muted small">{{if .Scheduled}}{{fmtDate .StartsOn}}{{end}}</span></span>
+          <form method="post" action="/events/{{$e.ID}}/discussed" class="inline-form">
+            {{template "csrf" $.CSRF}}
+            <input type="hidden" name="event_id" value="{{.ID}}">
+            <button type="submit" class="btn btn--sm">Add</button>
+          </form>
+        </li>
+      {{end}}
+    </ul>
+    {{else}}<p class="muted">No other events match.</p>{{end}}
+  {{end}}
+  <form method="post" action="/events/{{$e.ID}}/discussed/idea" class="form">
+    {{template "csrf" .CSRF}}
+    <div class="field">
+      <label for="idea_title">New idea</label>
+      <input id="idea_title" name="title" required maxlength="200" placeholder="e.g. Summer picnic">
+    </div>
+    <div class="form__actions"><button type="submit" class="btn btn--primary">Add idea</button></div>
+  </form>
+  {{end}}
+</section>
+
+<section class="card section" id="minutes">
+  {{if .CanEditAgenda}}
+  <details {{if .MinutesOpen}}open{{end}}>
+    <summary class="section__title">{{if .MinutesOpen}}Minutes{{else}}Minutes (after the meeting){{end}}</summary>
+    <form method="post" action="/events/{{$e.ID}}/minutes" class="form">
+      {{template "csrf" .CSRF}}
+      <div class="field">
+        <label class="sr-only" for="minutes_text">Minutes</label>
+        <textarea id="minutes_text" name="minutes" rows="10">{{$e.Minutes}}</textarea>
+      </div>
+      <div class="form__actions"><button type="submit" class="btn btn--primary">Save minutes</button></div>
+    </form>
+  </details>
+  {{else}}
+    <h2 class="section__title">Minutes</h2>
+    {{with $e.Minutes}}{{range lines .}}<p>{{.}}</p>{{end}}{{else}}<p class="muted">No minutes yet.</p>{{end}}
+  {{end}}
+</section>
+
+<section class="card section" id="action-items">
+  <div class="section__head">
+    <h2 class="section__title">Action items <span class="count">{{$sum.Tasks.Done}}/{{$sum.Tasks.Total}}</span></h2>
+    <a class="btn btn--sm btn--ghost" href="/events/{{$e.ID}}/tasks">All action items</a>
+  </div>
+  {{$open := 0}}
+  <ul class="plain-list">
+    {{range .Tasks}}{{if not .IsDone}}{{$open = 1}}
+      <li>{{template "task-badge" .Status}} <a href="/events/{{$e.ID}}/tasks#task-{{.ID}}">{{.Title}}</a>
+        <span class="muted small">{{with .Assignee}}· {{.}} {{end}}{{if .Overdue $.Today}}· was due {{fmtDate .DueOn}}{{end}}</span></li>
+    {{end}}{{end}}
+  </ul>
+  {{if not $open}}<p class="muted">{{if $sum.Tasks.Total}}All done.{{else}}No action items yet.{{end}} <a href="/events/{{$e.ID}}/tasks">Add one</a>.</p>{{end}}
+</section>
+
+<section class="card section" id="rooms">
+  <div class="section__head">
+    <h2 class="section__title">Rooms</h2>
+    <a class="btn btn--sm btn--ghost" href="/events/{{$e.ID}}/rooms">{{if .Rooms}}Rooms{{else}}Add a room{{end}}</a>
+  </div>
+  {{if .Rooms}}
+  <ul class="plain-list">
+    {{range .Rooms}}<li>{{.PlaceName}}{{with .Purpose}} <span class="muted small">· {{.}}</span>{{end}}</li>{{end}}
+  </ul>
+  {{if .RoomConflicts}}<p class="text-alert small">{{pluralize .RoomConflicts "room"}} double-booked.</p>{{end}}
+  {{else}}
+    <p class="muted">No room yet.</p>
+  {{end}}
+</section>
+
+{{if or $e.Description $e.Notes}}
+<section class="card section notes">
+  <h2 class="section__title">About</h2>
+  {{with $e.Description}}{{range lines .}}<p>{{.}}</p>{{end}}{{end}}
+  {{with $e.Notes}}<h2 class="section__title">Notes</h2>{{range lines .}}<p>{{.}}</p>{{end}}{{end}}
+</section>
+{{end}}
+{{else}}
+{{with .DiscussedAt}}
+<section class="card section" id="discussed-at">
+  <h2 class="section__title">{{if $.IsIdea}}Came up at{{else}}Discussed at{{end}}</h2>
+  <ul class="plain-list">
+    {{range .}}
+      <li><a href="/events/{{.MeetingID}}#discussed-{{$e.ID}}">{{.Title}}</a> <span class="muted small">{{if .StartsOn}}· {{fmtDate .StartsOn}}{{end}}</span>
+        {{with .Note}}{{range lines .}}<p class="small">{{.}}</p>{{end}}{{end}}</li>
+    {{end}}
+  </ul>
+</section>
+{{end}}
 <div class="stat-grid">
   <a class="stat" href="/events/{{$e.ID}}/schedule">
     <span class="stat__label">When</span>
@@ -76,4 +300,5 @@
     </section>
   </div>
 </div>
+{{end}}
 {{end}}

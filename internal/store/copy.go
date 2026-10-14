@@ -17,7 +17,7 @@ type CopyOptions struct {
 }
 
 // CopyEvent copies an event with its rooms, task lists, tasks, schedule,
-// needs and helper jobs into a new planning event starting on
+// needs, agenda and helper jobs into a new planning event starting on
 // opts.StartsOn. Dates in it move by the same number of days. Tasks start
 // over as "to do" and needs as "needed". It all happens in one
 // transaction, and returns the new event's ID. The copy is a one-off: it is
@@ -73,9 +73,9 @@ func copyEventTx(tx *sql.Tx, srcID int64, opts CopyOptions) (int64, error) {
 	}
 
 	res, err := tx.Exec(`INSERT INTO events (title, kind, status, starts_on, start_time, ends_on, end_time, coordinator, expected_count,
-			description, notes, locked, copied_from, visibility, public_description)
+			description, notes, locked, copied_from, visibility, public_description, type)
 		SELECT ?, kind, 'planning', ?, start_time,
-			?, end_time, coordinator, expected_count, description, notes, locked, id, visibility, public_description
+			?, end_time, coordinator, expected_count, description, notes, locked, id, visibility, public_description, type
 		FROM events WHERE id = ?`, title, opts.StartsOn, shiftDate(src.EndsOn, days), srcID)
 	if err != nil {
 		return 0, err
@@ -97,6 +97,9 @@ func copyEventTx(tx *sql.Tx, srcID int64, opts CopyOptions) (int64, error) {
 	if err := c.tasks(); err != nil {
 		return 0, err
 	}
+	if err := c.agenda(); err != nil {
+		return 0, err
+	}
 	if err := c.schedule(); err != nil {
 		return 0, err
 	}
@@ -104,6 +107,10 @@ func copyEventTx(tx *sql.Tx, srcID int64, opts CopyOptions) (int64, error) {
 		return 0, err
 	}
 	if err := c.helperJobs(opts.KeepHelpers); err != nil {
+		return 0, err
+	}
+	// The sign-up form comes along as a draft with no sign-ups.
+	if err := copySignupFormTx(tx, srcID, newID); err != nil {
 		return 0, err
 	}
 	return newID, nil
@@ -208,6 +215,14 @@ func (c *copier) tasks() error {
 		}
 	}
 	return nil
+}
+
+// agenda copies the agenda items. Minutes and the events a meeting
+// discussed are never copied.
+func (c *copier) agenda() error {
+	_, err := c.tx.Exec(`INSERT INTO agenda_items (event_id, position, title, details, carry_over)
+		SELECT ?, position, title, details, carry_over FROM agenda_items WHERE event_id = ? ORDER BY position, id`, c.dst, c.src)
+	return err
 }
 
 // schedule copies the timeline with its dates moved.

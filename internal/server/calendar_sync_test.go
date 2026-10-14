@@ -163,3 +163,23 @@ func TestCalendarWorkerStops(t *testing.T) {
 		t.Fatal("worker didn't stop")
 	}
 }
+
+func TestBookingSignupOnlyForPublicEvents(t *testing.T) {
+	srv, st := newConnServer(t, map[string]string{})
+	st.SetSetting("base_url", "https://events.example.org")
+	srv.reloadSettings()
+	id, _ := st.CreateEvent(&store.Event{Title: "Fall Dinner", StartsOn: "2099-11-07", Visibility: "public"})
+	f, _ := st.CreateSignupForm(id)
+	f.Status = "open"
+	if err := st.UpdateSignupForm(f); err != nil {
+		t.Fatal(err)
+	}
+	e, _ := st.GetEvent(id)
+	if srv.bookingSignup(e) == nil {
+		t.Fatal("public event should carry the sign-up link")
+	}
+	e.Visibility = "private"
+	if srv.bookingSignup(e) != nil {
+		t.Fatal("private event must not carry the sign-up link")
+	}
+}

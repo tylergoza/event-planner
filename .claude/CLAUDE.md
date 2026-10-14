@@ -60,5 +60,5 @@ Ansible), check whether the siblings should get the same change.
   being rebuilt.
 - `starts_on = ''` means not scheduled yet; never sent to the calendar, and left out of the calendar, feeds, API and room clash checks. `date_tentative` = pencilled in, pushed as `tentative`.
 - `BOOKING_PLAN.md`: this app's part of bookable rooms / pending bookings / unscheduled events (design in `../.claude/plans/bookable-rooms-and-pending-bookings.md`). Tick its checkboxes as steps are done.
-- `MEETINGS_PLAN.md`: meetings (`events.type = 'meeting'`) with an agenda, minutes and a list of events discussed; ideas from a meeting are undated `planning` events. Agenda, minutes and discussion notes are internal like `notes`. Tick its checkboxes as steps are done.
+- `MEETINGS_PLAN.md`: meetings (`events.type = 'meeting'`) with an agenda, minutes and a list of events discussed; ideas from a meeting are undated `planning` events. Agenda, minutes and discussion notes are internal like `notes`, never sent to the calendar, `/api/v1/events`, `.ics` or public pages. Tick its checkboxes as steps are done.
 - `SIGNUPS_PLAN.md`: custom sign-up forms on events (design in `../.claude/plans/event-signups.md`). This app owns forms and answers; answers are never sent to the calendar, API, `.ics` or public pages, only spots left. Tick its checkboxes as steps are done.

@@ -20,7 +20,45 @@ func (s *Server) settingsData(data map[string]any) map[string]any {
 	if _, ok := data["SiteNameValue"]; !ok {
 		data["SiteNameValue"] = s.SiteName()
 	}
+	if _, ok := data["EmbedValue"]; !ok {
+		data["EmbedValue"] = strings.Join(s.signupEmbedOrigins(), "\n")
+	}
 	return data
+}
+
+// signupEmbedOrigins are the sites allowed to show sign-up forms in a frame.
+func (s *Server) signupEmbedOrigins() []string {
+	var out []string
+	for _, l := range strings.Split(s.store.Setting("signup_embed_origins", ""), "\n") {
+		if l = strings.TrimSpace(l); l != "" {
+			out = append(out, l)
+		}
+	}
+	return out
+}
+
+// parseOrigins checks one origin per line: http(s)://host[:port], no path,
+// query or login. It returns them cleaned and without repeats.
+func parseOrigins(text string) ([]string, error) {
+	var out []string
+	seen := map[string]bool{}
+	for _, l := range strings.Split(text, "\n") {
+		l = strings.TrimSpace(l)
+		if l == "" {
+			continue
+		}
+		u, err := url.Parse(l)
+		if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Hostname() == "" ||
+			u.User != nil || (u.Path != "" && u.Path != "/") || u.RawQuery != "" || u.Fragment != "" || strings.Contains(l, " ") {
+			return nil, errors.New("\"" + l + "\" isn't a site address like https://church.example (no path)")
+		}
+		o := u.Scheme + "://" + strings.ToLower(u.Host)
+		if !seen[o] {
+			seen[o] = true
+			out = append(out, o)
+		}
+	}
+	return out, nil
 }
 
 func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
@@ -36,7 +74,19 @@ func (s *Server) handleSettingsUpdate(w http.ResponseWriter, r *http.Request) {
 		}))
 		return
 	}
+	embed := r.PostFormValue("signup_embed_origins")
+	origins, err := parseOrigins(embed)
+	if err != nil {
+		s.render(w, r, http.StatusUnprocessableEntity, "settings", s.settingsData(map[string]any{
+			"Errors": []string{err.Error()}, "SiteNameValue": name, "EmbedValue": embed,
+		}))
+		return
+	}
 	if err := s.store.SetSetting("site_name", name); err != nil {
+		s.serverError(w, r, err)
+		return
+	}
+	if err := s.store.SetSetting("signup_embed_origins", strings.Join(origins, "\n")); err != nil {
 		s.serverError(w, r, err)
 		return
 	}

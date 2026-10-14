@@ -40,6 +40,9 @@
 {{/* An event's date is pencilled in. Pass the store.Event. */}}
 {{define "date-badge"}}{{if .DateTentative}}<span class="badge badge--tentative">Pencilled in</span>{{else if not .Scheduled}}<span class="badge badge--unscheduled">No date yet</span>{{end}}{{end}}
 
+{{/* A meeting is labelled; plain events aren't. Pass the store.Event. */}}
+{{define "type-badge"}}{{if .IsMeeting}}<span class="badge badge--meeting" title="A meeting, with an agenda and minutes">Meeting</span>{{end}}{{end}}
+
 {{define "need-badge"}}<span class="badge badge--need-{{.}}">{{needStatusLabel .}}</span>{{end}}
 
 {{/* An event's title and tabs, above each of its pages. Pass the page data. */}}
@@ -48,7 +51,7 @@
   <nav class="crumbs" aria-label="Breadcrumb"><a href="/events">Events</a></nav>
   <div class="page-head event-head">
     <div>
-      <h1>{{$e.Title}} {{template "event-badge" $e.Status}} {{template "date-badge" $e}}{{if $e.Locked}} {{template "locked-badge"}}{{end}} {{template "visibility-badge" $e.Visibility}}</h1>
+      <h1>{{$e.Title}} {{template "type-badge" $e}} {{template "event-badge" $e.Status}} {{template "date-badge" $e}}{{if $e.Locked}} {{template "locked-badge"}}{{end}} {{template "visibility-badge" $e.Visibility}}</h1>
       <p class="muted">{{$e.When}}{{with $e.Kind}} · {{.}}{{end}}{{with $e.Coordinator}} · Coordinated by {{.}}{{end}}</p>
       {{with .Series}}
       <p class="small series-line"><span class="badge badge--repeat">↻</span> Repeats: {{.Describe}} · <a href="/series/{{.ID}}">All dates</a> · {{.Pos}} of {{.Total}}{{with .Prev}} · <a href="/events/{{.ID}}">← {{fmtDate .OccurrenceDate}}</a>{{end}}{{with .Next}} · <a href="/events/{{.ID}}">{{fmtDate .OccurrenceDate}} →</a>{{end}}{{if $.User.CanPlan}}<br><a href="/events/{{$e.ID}}/match-later">Make later dates like this one</a> · <a href="/events/{{$e.ID}}/repeat">Change the repeat pattern</a> · <a href="/events/{{$e.ID}}/end-series">End the series from here</a>{{end}}</p>
@@ -67,6 +70,29 @@
 
 {{/* The tabs for an event's subpages. Pass the page data (.E and .Tab). */}}
 {{define "event-tabs"}}
+  {{$e := .E}}
+  {{if $e.IsMeeting}}
+  {{$m := .More}}
+  <nav class="tabs" aria-label="{{$e.Title}}">
+    <a href="/events/{{$e.ID}}" {{if eq .Tab "overview"}}aria-current="page"{{end}}>Overview</a>
+    {{if or $m.Schedule (eq .Tab "schedule")}}<a href="/events/{{$e.ID}}/schedule" {{if eq .Tab "schedule"}}aria-current="page"{{end}}>Timeline</a>{{end}}
+    <a href="/events/{{$e.ID}}/tasks" {{if eq .Tab "tasks"}}aria-current="page"{{end}}>Action items</a>
+    <a href="/events/{{$e.ID}}/rooms" {{if eq .Tab "rooms"}}aria-current="page"{{end}}>Rooms</a>
+    {{if or $m.Helpers (eq .Tab "helpers")}}<a href="/events/{{$e.ID}}/helpers" {{if eq .Tab "helpers"}}aria-current="page"{{end}}>Helpers</a>{{end}}
+    {{if or $m.Needs (eq .Tab "needs")}}<a href="/events/{{$e.ID}}/needs" {{if eq .Tab "needs"}}aria-current="page"{{end}}>Needs</a>{{end}}
+    <a href="/events/{{$e.ID}}/people" {{if eq .Tab "people"}}aria-current="page"{{end}}>People</a>
+  </nav>
+  {{if not (and $m.Schedule $m.Helpers $m.Needs)}}
+  <details class="more-menu no-print">
+    <summary>More</summary>
+    <p class="small">Add a
+      {{if not $m.Schedule}}<a href="/events/{{$e.ID}}/schedule">timeline</a>{{end}}
+      {{if not $m.Helpers}}<a href="/events/{{$e.ID}}/helpers">helpers list</a>{{end}}
+      {{if not $m.Needs}}<a href="/events/{{$e.ID}}/needs">needs list</a>{{end}}
+      to this meeting.</p>
+  </details>
+  {{end}}
+  {{else}}
   <nav class="tabs" aria-label="{{.E.Title}}">
     <a href="/events/{{.E.ID}}" {{if eq .Tab "overview"}}aria-current="page"{{end}}>Overview</a>
     <a href="/events/{{.E.ID}}/schedule" {{if eq .Tab "schedule"}}aria-current="page"{{end}}>Schedule</a>
@@ -76,6 +102,7 @@
     <a href="/events/{{.E.ID}}/needs" {{if eq .Tab "needs"}}aria-current="page"{{end}}>Needs</a>
     <a href="/events/{{.E.ID}}/people" {{if eq .Tab "people"}}aria-current="page"{{end}}>People</a>
   </nav>
+  {{end}}
 {{end}}
 
 {{/* Who's doing what, for the People page and its printout. Pass the page data (.E, .P, .Today). */}}

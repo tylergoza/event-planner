@@ -5,6 +5,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/tylergoza/event-planner/internal/recur"
 	"github.com/tylergoza/event-planner/internal/store"
@@ -50,7 +51,35 @@ func (s *Server) eventPage(w http.ResponseWriter, r *http.Request, status int, p
 	if _, ok := data["Title"]; !ok {
 		data["Title"] = e.Title
 	}
+	if e.IsMeeting() {
+		more, err := s.meetingMore(e)
+		if err != nil {
+			s.log.Error("meeting tabs", "event", e.ID, "err", err)
+		}
+		data["More"] = more
+	}
 	s.render(w, r, status, page, data)
+}
+
+// meetingTabs says which of the optional tabs a meeting already uses.
+// The others are offered from its "More" menu instead.
+type meetingTabs struct{ Schedule, Helpers, Needs bool }
+
+func (s *Server) meetingMore(e *store.Event) (meetingTabs, error) {
+	var m meetingTabs
+	items, err := s.store.ListSchedule(e.ID)
+	if err != nil {
+		return m, err
+	}
+	roles, err := s.store.ListHelperRoles(e.ID)
+	if err != nil {
+		return m, err
+	}
+	needs, err := s.store.ListNeeds(e.ID)
+	if err != nil {
+		return m, err
+	}
+	return meetingTabs{Schedule: len(items) > 0, Helpers: len(roles) > 0, Needs: len(needs) > 0}, nil
 }
 
 func eventURL(id int64, rest string) string { return "/events/" + strconv.FormatInt(id, 10) + rest }
@@ -74,7 +103,19 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	undated, dated := store.Unscheduled(list)
-	s.render(w, r, http.StatusOK, "dashboard", map[string]any{"Events": dated, "Unscheduled": undated, "MyTasks": mine, "MyJobs": jobs, "Today": s.today(), "Live": true})
+	var closing []store.Event
+	if currentUser(r).CanPlan() {
+		if closing, err = s.store.NeedsClosingOutFor(currentUser(r), time.Now()); err != nil {
+			s.serverError(w, r, err)
+			return
+		}
+	}
+	openForms, err := s.openSignups(dated)
+	if err != nil {
+		s.serverError(w, r, err)
+		return
+	}
+	s.render(w, r, http.StatusOK, "dashboard", map[string]any{"OpenSignups": openForms, "Closing": closing, "Events": dated, "Unscheduled": undated, "MyTasks": mine, "MyJobs": jobs, "Today": s.today(), "Live": true})
 }
 
 // visibleHelperJobs lists the helper jobs u is signed up for, in the
@@ -108,13 +149,28 @@ func (s *Server) visibleHelperJobs(u *store.User) ([]store.HelperAssignment, err
 // Events -----------------------------------------------------------------
 
 func (s *Server) handleEvents(w http.ResponseWriter, r *http.Request) {
-	list, err := s.store.ListEvents(currentUser(r), false, s.today())
+	typ := eventTypeFilter(r)
+	list, err := s.store.ListEventsOfType(currentUser(r), false, s.today(), typ)
 	if err != nil {
 		s.serverError(w, r, err)
 		return
 	}
 	undated, dated := store.Unscheduled(list)
-	s.render(w, r, http.StatusOK, "events/index", map[string]any{"Title": "Events", "Events": dated, "Unscheduled": undated})
+	s.render(w, r, http.StatusOK, "events/index", map[string]any{
+		"Title": "Events", "Events": dated, "Unscheduled": undated, "Type": typ, "TypeFilters": typeFilters,
+	})
+}
+
+// typeFilters are the views of the events list, by the ?type= value.
+var typeFilters = []struct{ Key, Label string }{{"event", "Events"}, {"meeting", "Meetings"}, {"", "All"}}
+
+// eventTypeFilter is "event", "meeting", or "" for all.
+func eventTypeFilter(r *http.Request) string {
+	switch t := r.URL.Query().Get("type"); t {
+	case "event", "meeting":
+		return t
+	}
+	return ""
 }
 
 func (s *Server) eventForm(w http.ResponseWriter, r *http.Request, status int, e store.Event, members []int64, errs []string) {
@@ -125,10 +181,13 @@ func (s *Server) eventForm(w http.ResponseWriter, r *http.Request, status int, e
 // they were submitted ("Repeat") and the "apply to" choice ("Apply").
 func (s *Server) eventFormWith(w http.ResponseWriter, r *http.Request, status int, e store.Event, members []int64, errs []string, extra map[string]any) {
 	title := "New event"
+	if e.IsMeeting() {
+		title = "New meeting"
+	}
 	if e.ID != 0 {
 		title = "Edit " + e.Title
 	}
-	data := map[string]any{"Title": title, "Form": e, "Visibilities": store.Visibilities, "Errors": errs, "Statuses": store.EventStatuses, "Apply": "this"}
+	data := map[string]any{"Title": title, "Form": e, "Visibilities": store.Visibilities, "Types": store.EventTypes, "Errors": errs, "Statuses": store.EventStatuses, "Apply": "this"}
 	// What was ticked when the form comes back with errors; otherwise
 	// whether the event has a date.
 	if r.Method == http.MethodPost {
@@ -141,6 +200,14 @@ func (s *Server) eventFormWith(w http.ResponseWriter, r *http.Request, status in
 	}
 	if _, ok := data["Repeat"]; !ok {
 		data["Repeat"] = newRepeat(e.StartsOn)
+	}
+	if e.ID != 0 {
+		su, err := s.signupSection(&e)
+		if err != nil {
+			s.serverError(w, r, err)
+			return
+		}
+		data["SU"] = su
 	}
 	// Only admins see who's on it and can change that.
 	if currentUser(r).IsAdmin() {
@@ -168,8 +235,8 @@ func (s *Server) eventFormWith(w http.ResponseWriter, r *http.Request, status in
 }
 
 func (s *Server) handleEventNew(w http.ResponseWriter, r *http.Request) {
-	e := store.Event{Status: "planning", StartsOn: s.today()}
 	q := r.URL.Query()
+	e := store.Event{Status: "planning", StartsOn: s.today(), Type: store.NormalizeType(q.Get("type"))}
 	extra := map[string]any{}
 	// "Make this an event" from the church calendar: fill what it sent,
 	// ignoring anything that doesn't look right.
@@ -222,6 +289,18 @@ func unscheduledForm(r *http.Request) bool { return formStr(r, "scheduling") == 
 // clears the dates (BOOKING_PLAN.md).
 func readEvent(r *http.Request, e *store.Event) ([]int64, []string) {
 	e.Title, e.Kind, e.Status = formStr(r, "title"), formStr(r, "kind"), formStr(r, "status")
+	var errs []string
+	// No type in the form keeps what the event already is.
+	if t := formStr(r, "type"); t != "" {
+		if slices.Contains(store.EventTypes, t) {
+			e.Type = t
+		} else {
+			errs = append(errs, "Pick Event or Meeting.")
+		}
+	}
+	if e.Type == "" {
+		e.Type = "event"
+	}
 	e.StartsOn, e.StartTime = formStr(r, "starts_on"), formStr(r, "start_time")
 	e.EndsOn, e.EndTime = formStr(r, "ends_on"), formStr(r, "end_time")
 	e.DateTentative = formStr(r, "date_tentative") == "1"
@@ -231,7 +310,6 @@ func readEvent(r *http.Request, e *store.Event) ([]int64, []string) {
 	}
 	e.Coordinator, e.Description, e.Notes = formStr(r, "coordinator"), formStr(r, "description"), formStr(r, "notes")
 	e.Visibility, e.PublicDescription = store.NormalizeVisibility(formStr(r, "visibility")), formStr(r, "public_description")
-	var errs []string
 	e.ExpectedCount = 0
 	if v := formStr(r, "expected_count"); v != "" {
 		if n, err := strconv.Atoi(v); err != nil || n < 0 || n > 1000000 {
@@ -250,7 +328,11 @@ func readEvent(r *http.Request, e *store.Event) ([]int64, []string) {
 		}
 	}
 	if e.Title == "" {
-		errs = append(errs, "Give the event a title.")
+		if e.IsMeeting() {
+			errs = append(errs, "Give the meeting a title.")
+		} else {
+			errs = append(errs, "Give the event a title.")
+		}
 	}
 	if !slices.Contains(store.EventStatuses, e.Status) {
 		errs = append(errs, "Pick a status.")
@@ -406,11 +488,58 @@ func (s *Server) handleEventShow(w http.ResponseWriter, r *http.Request) {
 	if s.Calendar().Configured() {
 		calClashes = s.storedClashes(e)
 	}
-	s.eventPage(w, r, http.StatusOK, "events/show", e, "overview", map[string]any{
-		"Sum": sum, "Upcoming": upcoming, "Attention": attention, "Today": s.today(), "Live": true,
+	now := time.Now()
+	data := map[string]any{
+		"NeedsClosingOut": e.NeedsClosingOut(now),
+		"Sum":             sum, "Upcoming": upcoming, "Attention": attention, "Today": s.today(), "Live": true,
 		"RoomCount": len(rooms), "RoomConflicts": len(conflicts), "Helpers": tally, "CopiedFrom": copiedFrom,
 		"CalendarClashes": calClashes,
-	})
+	}
+	if e.IsMeeting() {
+		agenda, err := s.store.AgendaItems(e.ID)
+		if err != nil {
+			s.serverError(w, r, err)
+			return
+		}
+		canEdit, err := s.canEditAgenda(e, currentUser(r))
+		if err != nil {
+			s.serverError(w, r, err)
+			return
+		}
+		data["Agenda"], data["CanEditAgenda"], data["Tasks"], data["Rooms"] = agenda, canEdit, tasks, rooms
+		discuss, err := s.store.MeetingEvents(e.ID, currentUser(r))
+		if err != nil {
+			s.serverError(w, r, err)
+			return
+		}
+		data["Discuss"] = discuss
+		if q := r.URL.Query(); canEdit && q.Has("pick") {
+			picks, err := s.store.PickEvents(e.ID, currentUser(r), q.Get("pick"))
+			if err != nil {
+				s.serverError(w, r, err)
+				return
+			}
+			data["Picking"], data["Pick"], data["PickResults"] = true, q.Get("pick"), picks
+		}
+		data["MinutesOpen"] = e.Minutes != "" || meetingStarted(e, now)
+	} else {
+		at, err := s.store.DiscussedAtList(e.ID, currentUser(r))
+		if err != nil {
+			s.serverError(w, r, err)
+			return
+		}
+		data["DiscussedAt"] = at
+		data["IsIdea"] = !e.Scheduled() && e.Status == "planning"
+	}
+	team, err := s.canEditAgenda(e, currentUser(r))
+	if err == nil {
+		data["Signups"], err = s.signupSummaryFor(e, currentUser(r), team)
+	}
+	if err != nil {
+		s.serverError(w, r, err)
+		return
+	}
+	s.eventPage(w, r, http.StatusOK, "events/show", e, "overview", data)
 }
 
 func (s *Server) handleEventEdit(w http.ResponseWriter, r *http.Request) {
