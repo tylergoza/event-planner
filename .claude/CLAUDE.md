@@ -20,11 +20,11 @@ Ansible), check whether the siblings should get the same change.
   `UM_EVENTS_SECRET` at deploy time. Local login when `SSO_URL` is unset.
 - Secrets never go in files or `export` lines in docs: the user keeps them
   in the macOS Keychain and runs make through `~/.zshrc` helpers:
-  `with-do` (DIGITALOCEAN_TOKEN, service `digitalocean`), `with-um`
+  `with-do-church` (DIGITALOCEAN_TOKEN, service `digitalocean-church`), `with-um`
   (UM_PLANNER/TRACKER/EVENTS_SECRET from `um-planner`/`um-tracker`/
   `um-events`), `with-ep` (EP_TRACKER_TOKEN from `event-planner`), `with-pp`
-  (planner's PP_TRACKER_TOKEN). Deploy is `with-do with-um make deploy`.
-- Roles are `users.role`: helper (works on events), planner (also
+  (planner's PP_TRACKER_TOKEN). Deploy is `with-do-church make deploy`.
+- Roles are `users.role`: member (planned, `MEMBERS_PLAN.md`: below helper, no back office, only sign-ups via `/my/signups` and the member API), helper (works on events), planner (also
   creates/runs events), admin (also users, settings, tokens, locks). Gate
   routes with `requirePlanner`/`requireAdmin`; hide controls with
   `.User.CanPlan`. SSO maps User Management's role via `RoleFromSSO`.
@@ -36,11 +36,8 @@ Ansible), check whether the siblings should get the same change.
 - CSP is `style-src 'self'`: no inline `style=` attributes in templates.
 - Each page template is parsed with only `layout.html` + `partials/*.html`,
   so anything shared between pages goes in a partial.
-- Deploys onto the maintenance tracker's droplet (tag `maintenance-tracker`)
-  as `events.<dns_zone>`, service user `events`, data in
-  `/var/lib/event-planner`, Caddy site `/etc/caddy/sites/event-planner.caddy`.
-  The main Caddyfile text must stay identical in every repo's deploy.yml.
-  `deploy/ansible/vars.yml` is gitignored.
+- Deploys as `events.<dns_zone>`, service user `events`, data in
+  `/var/lib/event-planner`. `deploy/ansible/vars.yml` is gitignored.
 - The user runs all `git commit`s themselves (YubiKey signing). Don't commit.
 - `CALENDAR_PLAN.md` is this app's part of joining `../calendar` (8120);
   tick its checkboxes as steps are done. Everything there is optional:
@@ -62,3 +59,5 @@ Ansible), check whether the siblings should get the same change.
 - `BOOKING_PLAN.md`: this app's part of bookable rooms / pending bookings / unscheduled events (design in `../.claude/plans/bookable-rooms-and-pending-bookings.md`). Tick its checkboxes as steps are done.
 - `MEETINGS_PLAN.md`: meetings (`events.type = 'meeting'`) with an agenda, minutes and a list of events discussed; ideas from a meeting are undated `planning` events. Agenda, minutes and discussion notes are internal like `notes`, never sent to the calendar, `/api/v1/events`, `.ics` or public pages. Tick its checkboxes as steps are done.
 - `SIGNUPS_PLAN.md`: custom sign-up forms on events (design in `../.claude/plans/event-signups.md`). This app owns forms and answers; answers are never sent to the calendar, API, `.ics` or public pages, only spots left. Tick its checkboxes as steps are done.
+- `MEMBERS_PLAN.md`: this app's part of the website members area (design in `../.claude/plans/members-site.md`): a `member` role and `/api/v1/me/…` sign-ups with User Management tokens. Tick its checkboxes as steps are done.
+- Deploy (`deploy/ansible`): the app runs on an apps box (`apps_box`, default `apps-1`, shared with the other apps) in the church DigitalOcean account and binds its VPC address (port 8110); the edge box (`../edge_proxy`) holds Caddy, DNS points at it, and this deploy writes the app's site file (`/etc/caddy/sites/event-planner.caddy`) there. Run commands through `with-do-church`. Its state is `events.db` plus `secrets.key` only; `make backup` / `restore` / `move` carry both. Real `do_team` and domains live in the gitignored `vars.yml`.
