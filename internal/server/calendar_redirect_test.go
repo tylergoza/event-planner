@@ -15,7 +15,6 @@ func TestCalendarRedirects(t *testing.T) {
 	c := &http.Client{CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
 
 	for path, want := range map[string]string{
-		"/":                       "https://cal.example.org/calendar",
 		"/calendar":               "https://cal.example.org/calendar",
 		"/calendar?month=2099-11": "https://cal.example.org/calendar?month=2099-11",
 		"/calendar/7":             "https://cal.example.org/calendar/by-source/events/7",
@@ -31,7 +30,17 @@ func TestCalendarRedirects(t *testing.T) {
 		}
 	}
 
-	resp, err := c.Get(ts.URL + "/api/v1/events")
+	// The planner's own address is for signing in, not for the calendar.
+	resp, err := c.Get(ts.URL + "/")
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusSeeOther || resp.Header.Get("Location") != "/login" {
+		t.Errorf("GET /: %d %q, want 303 /login", resp.StatusCode, resp.Header.Get("Location"))
+	}
+
+	resp, err = c.Get(ts.URL + "/api/v1/events")
 	if err != nil {
 		t.Fatal(err)
 	}

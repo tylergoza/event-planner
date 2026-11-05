@@ -39,8 +39,9 @@ func (s *Server) calAccess(r *http.Request) store.CalendarAccess {
 	return store.CalendarPublic
 }
 
-// handleHome is the dashboard for people who are signed in and the public
-// calendar for everyone else (before the first
+// handleHome is the dashboard for people who are signed in. Everyone else
+// gets the sign-in page when the church calendar has the public pages, and
+// the public calendar when this app runs alone (before the first
 // administrator exists, Sign in leads to /setup).
 func (s *Server) handleHome(w http.ResponseWriter, r *http.Request) {
 	if currentUser(r) != nil {
@@ -48,7 +49,8 @@ func (s *Server) handleHome(w http.ResponseWriter, r *http.Request) {
 		s.handleDashboard(w, r)
 		return
 	}
-	if s.calendarRedirect(w, r, func(c *calendar.Client) string { return c.PublicURL + "/calendar" }) {
+	if s.Calendar().Configured() {
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
 		return
 	}
 	s.handleCalendar(w, r)

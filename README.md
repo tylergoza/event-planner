@@ -59,7 +59,7 @@ as an ID plus a cached name, so pages still work if that app is down.
 |---------------|--------------|---------------------|
 | Nothing (alone) | Everything in [Features](#features): events, tasks, rooms, needs, helpers, the public calendar, the [events API](#the-events-api), local login | Its own users, and rooms and needs typed in by hand |
 | [Maintenance tracker](#the-maintenance-tracker) | Pick rooms and places, and products, items and supplies for needs, with how many are on hand and **short by** | The tracker's IDs and a cached name or path |
-| [Church calendar](#public-calendar) | Every event date and its rooms are sent to it. `/calendar`, `/calendar.ics` and signed-out `/` redirect to it. | Its own events. Its own public calendar stays, for when the calendar connection is off. |
+| [Church calendar](#public-calendar) | Every event date and its rooms are sent to it. `/calendar` and `/calendar.ics` redirect to it, and signed-out `/` goes to sign-in. | Its own events. Its own public calendar stays, for when the calendar connection is off. |
 | [User Management](#single-sign-on) | Sign in with a church account, roles, and the people pickers and Users page | A local user row linked to the User Management ID, so history stays |
 
 This app owns events, with their dates, tasks, rooms, helper jobs and needs.
@@ -180,10 +180,11 @@ Anyone can open `/calendar`. `/calendar?month=YYYY-MM&room=Name` picks the
 month and a room. Signed-in people see the same pages with the details
 described above and links to each event's internal page.
 
-- `/` shows the calendar to visitors who aren't signed in.
-- When the church calendar is connected, `/calendar`, `/calendar/{id}`,
-  `/calendar.ics` and signed-out `/` redirect (302) to it. The events API
-  is unchanged, and without a calendar everything here works as before.
+- `/` shows the calendar to visitors who aren't signed in, unless the church
+  calendar is connected; then it goes to sign-in.
+- When the church calendar is connected, `/calendar`, `/calendar/{id}` and
+  `/calendar.ics` redirect (302) to it. The events API is unchanged, and
+  without a calendar everything here works as before.
 - **Subscribe** on the calendar page gives `webcal://…/calendar.ics`. The
   feed is public and covers 90 days from today by default. `from` and `to`
   work as they do in the [API](#the-events-api). It's cached for 5 minutes.
