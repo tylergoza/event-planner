@@ -504,7 +504,11 @@ func TestSignupFollowUps(t *testing.T) {
 
 func TestSignupOutboxOnStateChange(t *testing.T) {
 	st := openTest(t)
-	ev := newEvent(t, st, "Dinner")
+	// WithdrawSignup reads the real clock, so the event must stay ahead of it.
+	ev, err := st.CreateEvent(&Event{Title: "Dinner", StartsOn: time.Now().AddDate(0, 1, 0).Format("2006-01-02")})
+	if err != nil {
+		t.Fatal(err)
+	}
 	openForm(t, st, ev, "self")
 	q := mustQ(t, st, ev, SignupQuestionInput{Kind: "one", Label: "Dish", Required: true})
 	only := mustC(t, st, q, "Salad", 2)

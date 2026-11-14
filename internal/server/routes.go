@@ -49,7 +49,7 @@ func (s *Server) routes() http.Handler {
 
 	// The calendar is public: no requireUser. Signed-in people get the same
 	// pages with more detail (the session is loaded for these paths).
-	mux.HandleFunc("GET /{$}", s.handleHome) // dashboard, or the calendar when signed out
+	mux.HandleFunc("GET /{$}", s.handleHome) // dashboard; signed out, sign-in or the calendar running alone
 	mux.HandleFunc("GET /calendar", s.handleCalendar)
 	mux.HandleFunc("GET /calendar/{id}", s.handleCalendarEvent)
 	auth("GET /live", s.handleLive)

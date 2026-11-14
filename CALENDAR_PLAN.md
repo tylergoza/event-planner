@@ -79,7 +79,7 @@ shell on the server to connect the apps.
 
 ### 5. Hand over the public calendar
 - [x] When the calendar is set: `/calendar`, `/calendar/{id}` and `/calendar.ics` redirect (302) to the calendar app; `/calendar/{id}` maps to the calendar's booking for `events/{id}` (`/calendar/by-source/events/{id}` on the calendar side)
-- [x] Signed-out `/` redirects to the calendar too
+- [x] Signed-out `/` goes to sign-in (it first redirected to the calendar, which made the planner's own address look like the wrong site)
 - [x] `/api/v1/events…` keeps working (the website may still use it) until the website is switched; then it's left for standalone installs
 
 ### 6. Make this an event

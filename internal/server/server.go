@@ -28,6 +28,7 @@ import (
 	"github.com/tylergoza/event-planner/internal/sso"
 	"github.com/tylergoza/event-planner/internal/store"
 	"github.com/tylergoza/event-planner/internal/tracker"
+	"github.com/tylergoza/event-planner/internal/umtoken"
 	"github.com/tylergoza/event-planner/web"
 )
 
@@ -74,6 +75,8 @@ type Server struct {
 	ssoBroken  atomic.Value
 	ssoBaseURL atomic.Value
 	grants     *grantChecks
+	// meTokens checks the User Management tokens sent to /api/v1/me/….
+	meTokens *umtoken.Verifier
 
 	limiter       *loginLimiter
 	signupLimiter *loginLimiter // public sign-up posts per IP
@@ -85,7 +88,7 @@ func New(cfg Config, st *store.Store, logger *slog.Logger) (*Server, error) {
 	if cfg.SessionTTL == 0 {
 		cfg.SessionTTL = 30 * 24 * time.Hour
 	}
-	s := &Server{cfg: cfg, store: st, log: logger, limiter: newLoginLimiter(10, 15*time.Minute), signupLimiter: newLoginLimiter(30, 15*time.Minute), live: newHub(), grants: newGrantChecks(),
+	s := &Server{cfg: cfg, store: st, log: logger, limiter: newLoginLimiter(10, 15*time.Minute), signupLimiter: newLoginLimiter(30, 15*time.Minute), live: newHub(), grants: newGrantChecks(), meTokens: umtoken.New(),
 		calendarKick: make(chan struct{}, 1)}
 	s.ssoBroken.Store("")
 	s.ssoBaseURL.Store("")

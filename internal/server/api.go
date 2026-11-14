@@ -41,6 +41,9 @@ func (s *Server) apiRoutes(mux *http.ServeMux, admin func(string, http.HandlerFu
 	api("GET /api/v1/events/{id}", s.requireToken(s.apiEvent))
 	api("GET /api/v1/events.ics", s.requireTokenOrQuery(s.apiICS))
 	api("GET /calendar.ics", s.publicICS)
+	// Per-person reads with a User Management token (api_me.go); off
+	// unless single sign-on is connected. No CORS here (not apiHandler).
+	s.meRoutes(mux)
 	api("OPTIONS /api/", func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusNoContent) })
 	api("OPTIONS /calendar.ics", func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusNoContent) })
 	api("/api/", func(w http.ResponseWriter, r *http.Request) { apiError(w, http.StatusNotFound, "no such endpoint") })
