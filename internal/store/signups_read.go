@@ -499,3 +499,65 @@ func (s *Store) WhosBringingWhat(eventID int64) ([]BringingList, error) {
 	}
 	return out, nil
 }
+
+// OpenSignupForms lists the forms whose own status is open, on events
+// that are scheduled, not cancelled and start today or later (YYYY-MM-DD),
+// soonest first. Their effective state (SignupState) may still be full or
+// closed; callers check it. For /api/v1/me/signups/open.
+func (s *Store) OpenSignupForms(today string) ([]SignupForm, error) {
+	rows, err := s.DB.Query(`SELECT `+prefixCols("f.", signupFormCols)+`
+		FROM signup_forms f JOIN events e ON e.id = f.event_id
+		WHERE f.status = 'open' AND e.status <> 'cancelled' AND e.starts_on <> ''
+		  AND COALESCE(NULLIF(e.ends_on, ''), e.starts_on) >= ?
+		ORDER BY e.starts_on, e.start_time, e.id`, today)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []SignupForm
+	for rows.Next() {
+		f, err := scanSignupForm(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, *f)
+	}
+	return out, rows.Err()
+}
+
+// prefixCols puts a table alias in front of each column of a list.
+func prefixCols(alias, cols string) string {
+	parts := strings.Split(cols, ",")
+	for i, c := range parts {
+		parts[i] = alias + strings.TrimSpace(c)
+	}
+	return strings.Join(parts, ", ")
+}
+
+// SignupPeopleNames is the names of the people on each of the sign-ups
+// given, in form order, by sign-up ID. Allergies are not read.
+func (s *Store) SignupPeopleNames(signupIDs []int64) (map[int64][]string, error) {
+	out := map[int64][]string{}
+	if len(signupIDs) == 0 {
+		return out, nil
+	}
+	args := make([]any, len(signupIDs))
+	for i, id := range signupIDs {
+		args[i] = id
+	}
+	rows, err := s.DB.Query(`SELECT signup_id, name FROM signup_people WHERE signup_id IN (`+
+		strings.TrimSuffix(strings.Repeat("?,", len(args)), ",")+`) ORDER BY signup_id, position, id`, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id int64
+		var name string
+		if err := rows.Scan(&id, &name); err != nil {
+			return nil, err
+		}
+		out[id] = append(out[id], name)
+	}
+	return out, rows.Err()
+}
